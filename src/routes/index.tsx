@@ -1,17 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  LayoutDashboard,
-  CalendarDays,
-  Apple,
-  Activity,
-  Settings,
-  Search,
-  Bell,
   Plus,
   Flame,
   Droplets,
   Dumbbell,
-  Leaf,
   Coffee,
   Salad,
   Soup,
@@ -20,73 +12,18 @@ import {
   Sparkles,
   TrendingUp,
 } from "lucide-react";
+import { AppShell } from "@/components/app-shell";
+import { Ring } from "@/components/ui-bits";
 
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "Dashboard — NutriSmart" },
+      { name: "description", content: "Your daily nutrition snapshot, meals, macros and hydration." },
+    ],
+  }),
   component: DashboardPage,
 });
-
-function Ring({
-  size = 96,
-  stroke = 10,
-  value,
-  color,
-  track = "rgba(255,255,255,0.14)",
-}: {
-  size?: number;
-  stroke?: number;
-  value: number;
-  color: string;
-  track?: string;
-}) {
-  const r = (size - stroke) / 2;
-  const c = 2 * Math.PI * r;
-  const dash = (value / 100) * c;
-  return (
-    <svg width={size} height={size} className="-rotate-90">
-      <circle cx={size / 2} cy={size / 2} r={r} stroke={track} strokeWidth={stroke} fill="none" />
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={r}
-        stroke={color}
-        strokeWidth={stroke}
-        strokeLinecap="round"
-        strokeDasharray={`${dash} ${c}`}
-        fill="none"
-      />
-    </svg>
-  );
-}
-
-function NavItem({
-  icon: Icon,
-  label,
-  active,
-  badge,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  active?: boolean;
-  badge?: string;
-}) {
-  return (
-    <button
-      className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-        active
-          ? "bg-sidebar-accent text-sidebar-accent-foreground"
-          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
-      }`}
-    >
-      <Icon className="h-4.5 w-4.5 shrink-0" />
-      <span className="flex-1 text-left">{label}</span>
-      {badge && (
-        <span className="rounded-full bg-leaf/20 px-2 py-0.5 text-[10px] font-semibold text-leaf">
-          {badge}
-        </span>
-      )}
-    </button>
-  );
-}
 
 function DashboardPage() {
   return (
