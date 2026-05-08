@@ -1,17 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  LayoutDashboard,
-  CalendarDays,
-  Apple,
-  Activity,
-  Settings,
-  Search,
-  Bell,
   Plus,
   Flame,
   Droplets,
   Dumbbell,
-  Leaf,
   Coffee,
   Salad,
   Soup,
@@ -20,149 +12,23 @@ import {
   Sparkles,
   TrendingUp,
 } from "lucide-react";
+import { AppShell } from "@/components/app-shell";
+import { Ring } from "@/components/ui-bits";
 
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "Dashboard — NutriSmart" },
+      { name: "description", content: "Your daily nutrition snapshot, meals, macros and hydration." },
+    ],
+  }),
   component: DashboardPage,
 });
 
-function Ring({
-  size = 96,
-  stroke = 10,
-  value,
-  color,
-  track = "rgba(255,255,255,0.14)",
-}: {
-  size?: number;
-  stroke?: number;
-  value: number;
-  color: string;
-  track?: string;
-}) {
-  const r = (size - stroke) / 2;
-  const c = 2 * Math.PI * r;
-  const dash = (value / 100) * c;
-  return (
-    <svg width={size} height={size} className="-rotate-90">
-      <circle cx={size / 2} cy={size / 2} r={r} stroke={track} strokeWidth={stroke} fill="none" />
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={r}
-        stroke={color}
-        strokeWidth={stroke}
-        strokeLinecap="round"
-        strokeDasharray={`${dash} ${c}`}
-        fill="none"
-      />
-    </svg>
-  );
-}
-
-function NavItem({
-  icon: Icon,
-  label,
-  active,
-  badge,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  active?: boolean;
-  badge?: string;
-}) {
-  return (
-    <button
-      className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-        active
-          ? "bg-sidebar-accent text-sidebar-accent-foreground"
-          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
-      }`}
-    >
-      <Icon className="h-4.5 w-4.5 shrink-0" />
-      <span className="flex-1 text-left">{label}</span>
-      {badge && (
-        <span className="rounded-full bg-leaf/20 px-2 py-0.5 text-[10px] font-semibold text-leaf">
-          {badge}
-        </span>
-      )}
-    </button>
-  );
-}
-
 function DashboardPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="flex">
-        {/* Sidebar */}
-        <aside className="sticky top-0 hidden h-screen w-[240px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar p-4 lg:flex">
-          <div className="flex items-center gap-2.5 px-2 py-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-leaf shadow-[0_4px_14px_-2px] shadow-leaf/40">
-              <Leaf className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <div className="font-display text-lg font-semibold text-sidebar-foreground">
-                NutriSmart
-              </div>
-              <div className="text-[11px] uppercase tracking-wider text-sidebar-foreground/50">
-                Pro plan
-              </div>
-            </div>
-          </div>
-
-          <nav className="mt-6 space-y-1">
-            <NavItem icon={LayoutDashboard} label="Dashboard" active />
-            <NavItem icon={CalendarDays} label="Meal planner" badge="3" />
-            <NavItem icon={Apple} label="Food library" />
-            <NavItem icon={Activity} label="Progress" />
-            <NavItem icon={Sparkles} label="AI coach" />
-          </nav>
-
-          <div className="mt-auto space-y-2">
-            <div className="rounded-2xl bg-sidebar-accent/60 p-4">
-              <div className="flex items-center gap-2 text-sidebar-foreground">
-                <Sparkles className="h-4 w-4 text-leaf" />
-                <span className="text-sm font-semibold">Weekly insight</span>
-              </div>
-              <p className="mt-2 text-xs leading-relaxed text-sidebar-foreground/70">
-                You hit your protein goal 5 of 7 days. Try one extra serving on rest days.
-              </p>
-            </div>
-            <NavItem icon={Settings} label="Settings" />
-          </div>
-        </aside>
-
-        {/* Main */}
-        <main className="min-w-0 flex-1">
-          {/* Topbar */}
-          <header className="sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-border bg-background/80 px-6 backdrop-blur-xl">
-            <div className="flex flex-1 items-center gap-3">
-              <div className="relative w-full max-w-md">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  placeholder="Search foods, recipes, meals…"
-                  className="h-10 w-full rounded-xl border border-border bg-muted/40 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:bg-background focus:outline-none focus:ring-2 focus:ring-ring/40"
-                />
-              </div>
-            </div>
-            <button className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-border text-muted-foreground transition-colors hover:bg-muted">
-              <Bell className="h-4.5 w-4.5" />
-              <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-leaf" />
-            </button>
-            <button className="flex h-10 items-center gap-2 rounded-xl bg-primary px-3.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90">
-              <Plus className="h-4 w-4" />
-              Log meal
-            </button>
-            <div className="flex items-center gap-3 border-l border-border pl-4">
-              <div className="text-right">
-                <div className="text-sm font-semibold leading-tight">Maya Chen</div>
-                <div className="text-[11px] text-muted-foreground">Day 42 of plan</div>
-              </div>
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-leaf to-citrus text-sm font-semibold text-primary">
-                MC
-              </div>
-            </div>
-          </header>
-
-          <div className="grid grid-cols-1 gap-6 p-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+    <AppShell>
+      <div className="grid grid-cols-1 gap-6 p-6 xl:grid-cols-[minmax(0,1fr)_320px]">
             <div className="space-y-6">
               {/* Hero */}
               <section className="relative overflow-hidden rounded-3xl bg-[var(--gradient-hero)] p-6 text-primary-foreground shadow-[var(--shadow-soft)] sm:p-8">
@@ -349,9 +215,7 @@ function DashboardPage() {
               </section>
             </aside>
           </div>
-        </main>
-      </div>
-    </div>
+    </AppShell>
   );
 }
 
