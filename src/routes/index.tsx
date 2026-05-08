@@ -215,9 +215,7 @@ function DashboardPage() {
               </section>
             </aside>
           </div>
-        </main>
-      </div>
-    </div>
+    </AppShell>
   );
 }
 
