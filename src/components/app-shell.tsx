@@ -12,13 +12,21 @@ import {
   Sparkles,
 } from "lucide-react";
 
-const nav = [
+type NavItem = {
+  to: "/" | "/planner" | "/library" | "/progress" | "/coach";
+  label: string;
+  icon: typeof LayoutDashboard;
+  exact?: boolean;
+  badge?: string;
+};
+
+const nav: NavItem[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/planner", label: "Meal planner", icon: CalendarDays, badge: "3" },
   { to: "/library", label: "Food library", icon: Apple },
   { to: "/progress", label: "Progress", icon: Activity },
   { to: "/coach", label: "AI coach", icon: Sparkles },
-] as const;
+];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
