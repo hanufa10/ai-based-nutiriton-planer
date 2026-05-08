@@ -95,7 +95,7 @@ function DashboardPage() {
         {/* Sidebar */}
         <aside className="sticky top-0 hidden h-screen w-[240px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar p-4 lg:flex">
           <div className="flex items-center gap-2.5 px-2 py-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-leaf text-leaf-foreground shadow-[0_4px_14px_-2px] shadow-leaf/40">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-leaf shadow-[0_4px_14px_-2px] shadow-leaf/40">
               <Leaf className="h-5 w-5 text-primary" />
             </div>
             <div>
