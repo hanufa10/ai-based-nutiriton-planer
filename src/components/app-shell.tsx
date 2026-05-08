@@ -1,0 +1,159 @@
+import { Link, useRouterState } from "@tanstack/react-router";
+import {
+  LayoutDashboard,
+  CalendarDays,
+  Apple,
+  Activity,
+  Settings,
+  Search,
+  Bell,
+  Plus,
+  Leaf,
+  Sparkles,
+} from "lucide-react";
+
+const nav = [
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { to: "/planner", label: "Meal planner", icon: CalendarDays, badge: "3" },
+  { to: "/library", label: "Food library", icon: Apple },
+  { to: "/progress", label: "Progress", icon: Activity },
+  { to: "/coach", label: "AI coach", icon: Sparkles },
+] as const;
+
+export function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <div className="flex">
+        <aside className="sticky top-0 hidden h-screen w-[240px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar p-4 lg:flex">
+          <Link to="/" className="flex items-center gap-2.5 px-2 py-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-leaf shadow-[0_4px_14px_-2px] shadow-leaf/40">
+              <Leaf className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <div className="font-display text-lg font-semibold text-sidebar-foreground">
+                NutriSmart
+              </div>
+              <div className="text-[11px] uppercase tracking-wider text-sidebar-foreground/50">
+                Pro plan
+              </div>
+            </div>
+          </Link>
+
+          <nav className="mt-6 space-y-1">
+            {nav.map((item) => {
+              const Icon = item.icon;
+              const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                    active
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+                  }`}
+                >
+                  <Icon className="h-4.5 w-4.5 shrink-0" />
+                  <span className="flex-1 text-left">{item.label}</span>
+                  {item.badge && (
+                    <span className="rounded-full bg-leaf/20 px-2 py-0.5 text-[10px] font-semibold text-leaf">
+                      {item.badge}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="mt-auto space-y-2">
+            <div className="rounded-2xl bg-sidebar-accent/60 p-4">
+              <div className="flex items-center gap-2 text-sidebar-foreground">
+                <Sparkles className="h-4 w-4 text-leaf" />
+                <span className="text-sm font-semibold">Weekly insight</span>
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-sidebar-foreground/70">
+                You hit your protein goal 5 of 7 days. Try one extra serving on rest days.
+              </p>
+            </div>
+            <Link
+              to="/settings"
+              className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                pathname.startsWith("/settings")
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+              }`}
+            >
+              <Settings className="h-4.5 w-4.5" />
+              <span>Settings</span>
+            </Link>
+          </div>
+        </aside>
+
+        <main className="min-w-0 flex-1">
+          <header className="sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-border bg-background/80 px-6 backdrop-blur-xl">
+            <div className="flex flex-1 items-center gap-3">
+              <div className="relative w-full max-w-md">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  placeholder="Search foods, recipes, meals…"
+                  className="h-10 w-full rounded-xl border border-border bg-muted/40 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:bg-background focus:outline-none focus:ring-2 focus:ring-ring/40"
+                />
+              </div>
+            </div>
+            <button className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-border text-muted-foreground transition-colors hover:bg-muted">
+              <Bell className="h-4.5 w-4.5" />
+              <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-leaf" />
+            </button>
+            <button className="flex h-10 items-center gap-2 rounded-xl bg-primary px-3.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90">
+              <Plus className="h-4 w-4" />
+              Log meal
+            </button>
+            <div className="flex items-center gap-3 border-l border-border pl-4">
+              <div className="text-right">
+                <div className="text-sm font-semibold leading-tight">Maya Chen</div>
+                <div className="text-[11px] text-muted-foreground">Day 42 of plan</div>
+              </div>
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-leaf to-citrus text-sm font-semibold text-primary">
+                MC
+              </div>
+            </div>
+          </header>
+          {children}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+export function PageHeader({
+  eyebrow,
+  title,
+  description,
+  actions,
+}: {
+  eyebrow?: string;
+  title: string;
+  description?: string;
+  actions?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        {eyebrow && (
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-leaf">
+            {eyebrow}
+          </div>
+        )}
+        <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+          {title}
+        </h1>
+        {description && (
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{description}</p>
+        )}
+      </div>
+      {actions && <div className="flex items-center gap-2">{actions}</div>}
+    </div>
+  );
+}
