@@ -1,4 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   CalendarDays,
@@ -13,9 +14,9 @@ import {
 } from "lucide-react";
 
 type NavItem = {
-  to: "/" | "/planner" | "/library" | "/progress" | "/coach";
+  to: "/" | "/planner" | "/library" | "/progress" | "/coach" | "/settings";
   label: string;
-  icon: typeof LayoutDashboard;
+  icon: React.ComponentType<{ className?: string }>;
   exact?: boolean;
   badge?: string;
 };
@@ -28,8 +29,52 @@ const nav: NavItem[] = [
   { to: "/coach", label: "AI coach", icon: Sparkles },
 ];
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+interface AppShellProps {
+  children: React.ReactNode;
+}
+
+interface UserProfile {
+  name?: string;
+  username?: string;
+  user_name?: string;
+  dayOfPlan?: number;
+}
+
+export function AppShell({ children }: AppShellProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  
+  // 1. Manage user state directly inside the shell to ensure persistent hydration
+  const [userData, setUserData] = useState<UserProfile | null>(null);
+
+  useEffect(() => {
+    try {
+      const storedProfile = localStorage.getItem("user_profile");
+      if (storedProfile) {
+        const parsed = JSON.parse(storedProfile);
+        setUserData(parsed);
+      }
+    } catch (error) {
+      console.error("Failed to parse user profile from storage:", error);
+    }
+  }, []);
+
+  // 2. Fallback normalization strategy to capture backend key discrepancies gracefully
+  const rawDisplayName = 
+    userData?.name || 
+    userData?.username || 
+    userData?.user_name || 
+    "Guest User";
+
+  const currentDay = userData?.dayOfPlan ?? 1;
+
+  const getInitials = (name: string) => {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 0 || !parts[0]) return "??";
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
+  const userInitials = getInitials(rawDisplayName);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -85,6 +130,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 You hit your protein goal 5 of 7 days. Try one extra serving on rest days.
               </p>
             </div>
+            
             <Link
               to="/settings"
               className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
@@ -118,13 +164,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Plus className="h-4 w-4" />
               Log meal
             </button>
+            
+            {/* 3. Uses synchronized storage parameters directly */}
             <div className="flex items-center gap-3 border-l border-border pl-4">
               <div className="text-right">
-                <div className="text-sm font-semibold leading-tight">Maya Chen</div>
-                <div className="text-[11px] text-muted-foreground">Day 42 of plan</div>
+                <div className="text-sm font-semibold leading-tight">{rawDisplayName}</div>
+                <div className="text-[11px] text-muted-foreground">Day {currentDay} of plan</div>
               </div>
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-leaf to-citrus text-sm font-semibold text-primary">
-                MC
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-leaf to-citrus text-sm font-semibold text-primary uppercase select-none">
+                {userInitials}
               </div>
             </div>
           </header>
