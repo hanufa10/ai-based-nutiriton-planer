@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Plus,
   Flame,
@@ -25,196 +26,297 @@ export const Route = createFileRoute("/")({
   component: DashboardPage,
 });
 
+interface UserProfile {
+  userId: number;
+  username: string;
+  email: string;
+  role: string;
+  createdAt: string;
+}
+
 function DashboardPage() {
+  // --- STATE FOR LOGGED IN USER ---
+  const [user, setUser] = useState<UserProfile | null>(null);
+
+  // --- STATE FOR DYNAMIC METRICS ---
+  const [water, setWater] = useState(2.1); // in Liters
+  const [calories, setCalories] = useState(1480);
+  const [protein, setProtein] = useState(74); // in grams
+  const [streak, setStreak] = useState(12);
+
+  // Targets (Constants for this view)
+  const calorieTarget = 2050;
+  const proteinTarget = 128;
+  const waterTarget = 2.5;
+
+  // Carbs and Fats metrics (held static for mock purposes)
+  const carbs = 176;
+  const carbsGoal = 240;
+  const fat = 48;
+  const fatGoal = 70;
+
+  // --- SYNC AUTHENTICATION PROFILE ---
+  useEffect(() => {
+    try {
+      const storedProfile = localStorage.getItem("user_profile");
+      if (storedProfile) {
+        setUser(JSON.parse(storedProfile));
+      }
+    } catch (error) {
+      console.error("Failed to parse user session parameters:", error);
+    }
+  }, []);
+
+  // --- HANDLERS ---
+  const handleAddWater = () => {
+    setWater((prev) => {
+      const nextWater = Math.min(waterTarget, Number((prev + 0.25).toFixed(2)));
+      return nextWater;
+    });
+  };
+
+  const handleApplySuggestion = () => {
+    alert("Suggestion applied! Dinner swapped for cauliflower rice alternatives (-140 kcal target updated).");
+    setCalories((prev) => Math.max(0, prev - 140));
+  };
+
+  const handleGenericAction = (actionName: string) => {
+    alert(`${actionName} feature triggered!`);
+  };
+
+  // Percent calculation helpers
+  const calPercent = Math.min(100, Math.round((calories / calorieTarget) * 100));
+  const proteinPercent = Math.min(100, Math.round((protein / proteinTarget) * 100));
+  const waterPercent = Math.min(100, Math.round((water / waterTarget) * 100));
+
+  // Determine how many water grid bars to fill (8 bars total)
+  const filledWaterBars = Math.min(8, Math.floor((water / waterTarget) * 8));
+
+  // Get localized greeting name capitalizations or standard fallback text
+  const userGreetingName = user?.username 
+    ? user.username.charAt(0).toUpperCase() + user.username.slice(1) 
+    : "Champion";
+
   return (
     <AppShell>
       <div className="grid grid-cols-1 gap-6 p-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-            <div className="space-y-6">
-              {/* Hero */}
-              <section className="relative overflow-hidden rounded-3xl bg-[var(--gradient-hero)] p-6 text-primary-foreground shadow-[var(--shadow-soft)] sm:p-8">
+        <div className="space-y-6">
+          {/* Hero */}
+          <section className="relative overflow-hidden rounded-3xl bg-[var(--gradient-hero)] p-6 text-primary-foreground shadow-[var(--shadow-soft)] sm:p-8">
+            <div
+              aria-hidden
+              className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-leaf/20 blur-3xl"
+            />
+            <div
+              aria-hidden
+              className="absolute -bottom-32 left-1/3 h-72 w-72 rounded-full bg-citrus/10 blur-3xl"
+            />
+            <div className="relative grid gap-8 sm:grid-cols-[1fr_auto] sm:items-center">
+              <div>
                 <div
-                  aria-hidden
-                  className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-leaf/20 blur-3xl"
-                />
-                <div
-                  aria-hidden
-                  className="absolute -bottom-32 left-1/3 h-72 w-72 rounded-full bg-citrus/10 blur-3xl"
-                />
-                <div className="relative grid gap-8 sm:grid-cols-[1fr_auto] sm:items-center">
-                  <div>
-                    <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium ring-1 ring-white/15 backdrop-blur">
-                      <span className="h-1.5 w-1.5 rounded-full bg-leaf" />
-                      Friday · May 8
-                    </div>
-                    <h1 className="mt-4 font-display text-4xl font-semibold leading-[1.05] sm:text-5xl">
-                      Good morning, Maya.
-                    </h1>
-                    <p className="mt-2 max-w-md text-sm text-primary-foreground/70">
-                      You're on a 12-day streak. Two balanced meals away from closing every ring
-                      today.
-                    </p>
-
-                    <div className="mt-6 flex flex-wrap items-center gap-3">
-                      <button className="flex items-center gap-2 rounded-xl bg-leaf px-4 py-2.5 text-sm font-semibold text-primary shadow-[0_8px_24px_-8px] shadow-leaf/60 transition-transform hover:-translate-y-0.5">
-                        <Plus className="h-4 w-4" /> Plan today's meals
-                      </button>
-                      <button className="flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-medium text-primary-foreground ring-1 ring-white/15 backdrop-blur hover:bg-white/15">
-                        View weekly report <ChevronRight className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Rings */}
-                  <div className="flex items-center gap-6">
-                    <RingStat label="Calories" value={72} suffix="1480 / 2050" color="oklch(0.78 0.16 145)" />
-                    <RingStat label="Protein" value={58} suffix="74 / 128 g" color="oklch(0.82 0.16 70)" />
-                    <RingStat label="Water" value={85} suffix="2.1 / 2.5 L" color="oklch(0.78 0.14 220)" />
-                  </div>
-                </div>
-              </section>
-
-              {/* Quick tiles */}
-              <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <QuickTile icon={Flame} label="Calories" value="1,480" delta="+120" tint="leaf-soft" iconBg="leaf" />
-                <QuickTile icon={Dumbbell} label="Protein" value="74g" delta="58%" tint="lavender" iconBg="lavender" />
-                <QuickTile icon={Droplets} label="Hydration" value="2.1L" delta="85%" tint="citrus" iconBg="citrus" />
-                <QuickTile icon={TrendingUp} label="Streak" value="12d" delta="Best" tint="berry" iconBg="berry" />
-              </section>
-
-              {/* Today's meals */}
-              <section className="rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-                <div className="mb-5 flex items-end justify-between">
-                  <div>
-                    <h2 className="font-display text-2xl font-semibold">Today's plan</h2>
-                    <p className="text-sm text-muted-foreground">
-                      Crafted by your AI coach · 1,950 kcal target
-                    </p>
-                  </div>
-                  <button className="text-sm font-medium text-leaf hover:underline">
-                    Customize
-                  </button>
+                  className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium ring-1 ring-white/15 backdrop-blur"
+                  style={{ color: "oklch(0.27 0.05 145)" }}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-leaf" />
+                  Tuesday · May 19
                 </div>
 
-                <ul className="divide-y divide-border">
-                  <Meal
-                    icon={Coffee}
-                    tint="citrus"
-                    time="8:30 AM"
-                    title="Greek yogurt bowl"
-                    sub="Berries · honey · almonds"
-                    kcal={320}
-                    macros={{ p: 22, c: 38, f: 9 }}
-                    state="done"
-                  />
-                  <Meal
-                    icon={Salad}
-                    tint="leaf"
-                    time="12:45 PM"
-                    title="Quinoa harvest salad"
-                    sub="Roasted squash · feta · pecans"
-                    kcal={520}
-                    macros={{ p: 24, c: 58, f: 18 }}
-                    state="done"
-                  />
-                  <Meal
-                    icon={Cookie}
-                    tint="berry"
-                    time="3:30 PM"
-                    title="Protein smoothie"
-                    sub="Banana · whey · peanut butter"
-                    kcal={280}
-                    macros={{ p: 28, c: 26, f: 8 }}
-                    state="next"
-                  />
-                  <Meal
-                    icon={Soup}
-                    tint="lavender"
-                    time="7:15 PM"
-                    title="Miso glazed salmon"
-                    sub="Brown rice · bok choy · sesame"
-                    kcal={620}
-                    macros={{ p: 42, c: 54, f: 22 }}
-                    state="upcoming"
-                  />
-                </ul>
-              </section>
+                <h1
+                  className="mt-4 font-display text-4xl font-semibold leading-[1.05] sm:text-5xl"
+                  style={{ color: "oklch(0.27 0.05 145)" }}
+                >
+                  Good morning, {userGreetingName}.
+                </h1>
+
+                <p
+                  className="mt-2 max-w-md text-sm text-primary-foreground/70"
+                  style={{ color: "oklch(0.27 0.05 145)" }}
+                >
+                  You're on a {streak}-day streak. Two balanced meals away from closing every ring today.
+                </p>
+
+                <div className="mt-6 flex flex-wrap items-center gap-3">
+                  {/* Link to Planner Route */}
+                  <Link
+                    to="/planner"
+                    className="flex items-center gap-2 rounded-xl bg-leaf px-4 py-2.5 text-sm font-semibold shadow-[0_8px_24px_-8px] shadow-leaf/60 transition-transform hover:-translate-y-0.5"
+                    style={{ color: "oklch(0.27 0.05 145)" }}
+                  >
+                    <Plus className="h-4 w-4" /> Plan today's meals
+                  </Link>
+
+                  {/* Link to Progress Route */}
+                  <Link
+                    to="/progress"
+                    className="flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-medium ring-1 ring-white/15 backdrop-blur hover:bg-white/15"
+                    style={{ color: "oklch(0.27 0.05 145)" }}
+                  >
+                    View weekly report <ChevronRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              </div>
+
+              {/* Rings */}
+              <div className="flex items-center gap-6">
+                <RingStat label="Calories" value={calPercent} suffix={`${calories} / ${calorieTarget}`} color="oklch(0.78 0.16 145)" />
+                <RingStat label="Protein" value={proteinPercent} suffix={`${protein} / ${proteinTarget} g`} color="oklch(0.82 0.16 70)" />
+                <RingStat label="Water" value={waterPercent} suffix={`${water} / ${waterTarget} L`} color="oklch(0.78 0.14 220)" />
+              </div>
+            </div>
+          </section>
+
+          {/* Quick tiles */}
+          <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <QuickTile icon={Flame} label="Calories" value={`${calories.toLocaleString()}`} delta="+120" tint="leaf-soft" iconBg="leaf" />
+            <QuickTile icon={Dumbbell} label="Protein" value={`${protein}g`} delta={`${proteinPercent}%`} tint="lavender" iconBg="lavender" />
+            <QuickTile icon={Droplets} label="Hydration" value={`${water}L`} delta={`${waterPercent}%`} tint="citrus" iconBg="citrus" />
+            <QuickTile icon={TrendingUp} label="Streak" value={`${streak}d`} delta="Best" tint="berry" iconBg="berry" />
+          </section>
+
+          {/* Today's meals */}
+          <section className="rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+            <div className="mb-5 flex items-end justify-between">
+              <div>
+                <h2 className="font-display text-2xl font-semibold">Today's plan</h2>
+                <p className="text-sm text-muted-foreground">
+                  Crafted by your AI coach · 1,950 kcal target
+                </p>
+              </div>
+              <button 
+                onClick={() => handleGenericAction("Customize meals")}
+                className="text-sm font-medium text-leaf hover:underline"
+              >
+                Customize
+              </button>
             </div>
 
-            {/* Right column */}
-            <aside className="space-y-6">
-              {/* Macro breakdown */}
-              <section className="rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-display text-lg font-semibold">Macro split</h3>
-                  <span className="text-xs text-muted-foreground">Today</span>
-                </div>
+            <ul className="divide-y divide-border">
+              <Meal
+                icon={Coffee}
+                tint="citrus"
+                time="8:30 AM"
+                title="Greek yogurt bowl"
+                sub="Berries · honey · almonds"
+                kcal={320}
+                macros={{ p: 22, c: 38, f: 9 }}
+                state="done"
+              />
+              <Meal
+                icon={Salad}
+                tint="leaf"
+                time="12:45 PM"
+                title="Quinoa harvest salad"
+                sub="Roasted squash · feta · pecans"
+                kcal={520}
+                macros={{ p: 24, c: 58, f: 18 }}
+                state="done"
+              />
+              <Meal
+                icon={Cookie}
+                tint="berry"
+                time="3:30 PM"
+                title="Protein smoothie"
+                sub="Banana · whey · peanut butter"
+                kcal={280}
+                macros={{ p: 28, c: 26, f: 8 }}
+                state="next"
+              />
+              <Meal
+                icon={Soup}
+                tint="lavender"
+                time="7:15 PM"
+                title="Miso glazed salmon"
+                sub="Brown rice · bok choy · sesame"
+                kcal={620}
+                macros={{ p: 42, c: 54, f: 22 }}
+                state="upcoming"
+              />
+            </ul>
+          </section>
+        </div>
 
-                <div className="mt-5 flex items-center justify-center">
-                  <div className="relative">
-                    <Ring size={160} stroke={14} value={72} color="oklch(0.78 0.16 145)" track="oklch(0.92 0.01 130)" />
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="font-display text-3xl font-semibold text-foreground">
-                        72%
-                      </span>
-                      <span className="text-xs text-muted-foreground">of daily goal</span>
-                    </div>
-                  </div>
-                </div>
+        {/* Right column */}
+        <aside className="space-y-6">
+          {/* Macro breakdown */}
+          <section className="rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+            <div className="flex items-center justify-between">
+              <h3 className="font-display text-lg font-semibold">Macro split</h3>
+              <span className="text-xs text-muted-foreground">Today</span>
+            </div>
 
-                <div className="mt-5 space-y-3">
-                  <MacroRow label="Carbs" value={176} goal={240} color="oklch(0.82 0.16 70)" />
-                  <MacroRow label="Protein" value={74} goal={128} color="oklch(0.78 0.16 145)" />
-                  <MacroRow label="Fat" value={48} goal={70} color="oklch(0.78 0.1 300)" />
+            <div className="mt-5 flex items-center justify-center">
+              <div className="relative">
+                <Ring size={160} stroke={14} value={calPercent} color="oklch(0.78 0.16 145)" track="oklch(0.92 0.01 130)" />
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="font-display text-3xl font-semibold text-foreground">
+                    {calPercent}%
+                  </span>
+                  <span className="text-xs text-muted-foreground">of daily goal</span>
                 </div>
-              </section>
+              </div>
+            </div>
 
-              {/* Hydration */}
-              <section className="rounded-3xl bg-leaf-soft p-6 shadow-[var(--shadow-soft)]">
-                <div className="flex items-center gap-2 text-primary">
-                  <Droplets className="h-5 w-5" />
-                  <h3 className="font-display text-lg font-semibold">Hydration</h3>
-                </div>
-                <div className="mt-2 flex items-baseline gap-2">
-                  <span className="font-display text-4xl font-semibold text-primary">2.1</span>
-                  <span className="text-sm text-primary/70">/ 2.5 L</span>
-                </div>
+            <div className="mt-5 space-y-3">
+              <MacroRow label="Carbs" value={carbs} goal={carbsGoal} color="oklch(0.82 0.16 70)" />
+              <MacroRow label="Protein" value={protein} goal={proteinTarget} color="oklch(0.78 0.16 145)" />
+              <MacroRow label="Fat" value={fat} goal={fatGoal} color="oklch(0.78 0.1 300)" />
+            </div>
+          </section>
 
-                <div className="mt-4 grid grid-cols-8 gap-1.5">
-                  {Array.from({ length: 8 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className={`h-10 rounded-md ${
-                        i < 7 ? "bg-primary" : "bg-primary/15"
-                      }`}
-                    />
-                  ))}
-                </div>
-                <button className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90">
-                  <Plus className="h-4 w-4" /> Add 250 ml
-                </button>
-              </section>
+          {/* Hydration */}
+          <section className="rounded-3xl bg-leaf-soft p-6 shadow-[var(--shadow-soft)]">
+            <div className="flex items-center gap-2 text-primary">
+              <Droplets className="h-5 w-5" />
+              <h3 className="font-display text-lg font-semibold">Hydration</h3>
+            </div>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="font-display text-4xl font-semibold text-primary">{water}</span>
+              <span className="text-sm text-primary/70">/ {waterTarget} L</span>
+            </div>
 
-              {/* Coach */}
-              <section className="rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                    <Sparkles className="h-5 w-5 text-leaf" />
-                  </div>
-                  <div>
-                    <div className="font-display text-base font-semibold">AI coach tip</div>
-                    <div className="text-xs text-muted-foreground">Personalized for you</div>
-                  </div>
-                </div>
-                <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                  Your dinner runs heavy on carbs. Swap brown rice for cauliflower rice to free up
-                  ~140 kcal for tomorrow's long run.
-                </p>
-                <button className="mt-4 flex items-center gap-1 text-sm font-semibold text-leaf hover:underline">
-                  Apply suggestion <ChevronRight className="h-4 w-4" />
-                </button>
-              </section>
-            </aside>
-          </div>
+            <div className="mt-4 grid grid-cols-8 gap-1.5">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`h-10 rounded-md transition-colors duration-200 ${
+                    i < filledWaterBars ? "bg-primary" : "bg-primary/15"
+                  }`}
+                />
+              ))}
+            </div>
+            <button 
+              onClick={handleAddWater}
+              disabled={water >= waterTarget}
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Plus className="h-4 w-4" /> {water >= waterTarget ? "Goal Met!" : "Add 250 ml"}
+            </button>
+          </section>
+
+          {/* Coach */}
+          <section className="rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                <Sparkles className="h-5 w-5 text-leaf" />
+              </div>
+              <div>
+                <div className="font-display text-base font-semibold">AI coach tip</div>
+                <div className="text-xs text-muted-foreground">Personalized for you</div>
+              </div>
+            </div>
+            <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+              Your dinner runs heavy on carbs. Swap brown rice for cauliflower rice to free up
+              ~140 kcal for tomorrow's long run.
+            </p>
+            <button 
+              onClick={handleApplySuggestion}
+              className="mt-4 flex items-center gap-1 text-sm font-semibold text-leaf hover:underline"
+            >
+              Apply suggestion <ChevronRight className="h-4 w-4" />
+            </button>
+          </section>
+        </aside>
+      </div>
     </AppShell>
   );
 }
@@ -234,7 +336,11 @@ function RingStat({
     <div className="flex flex-col items-center gap-1.5">
       <div className="relative">
         <Ring size={88} stroke={9} value={value} color={color} />
-        <div className="absolute inset-0 flex items-center justify-center font-display text-base font-semibold">
+
+        <div
+          className="absolute inset-0 flex items-center justify-center font-display text-base font-semibold"
+          style={{ color: "oklch(0.27 0.05 145)" }}
+        >
           {value}%
         </div>
       </div>
@@ -384,7 +490,7 @@ function MacroRow({
         </span>
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-muted">
-        <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
+        <div className="h-full rounded-full transition-all duration-300" style={{ width: `${pct}%`, backgroundColor: color }} />
       </div>
     </div>
   );
