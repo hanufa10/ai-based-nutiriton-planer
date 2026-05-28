@@ -45,7 +45,6 @@ function LoginPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        // Capture specific error messages returned by your FastAPI backend if available
         throw new Error(data.detail || data.message || "Authentication failed. Please check your credentials.");
       }
 
@@ -56,7 +55,16 @@ function LoginPage() {
 
       // Small delay so the user catches the success state before transition redirect
       setTimeout(() => {
-        navigate({ to: "/onboarding" });
+        const searchParams = new URLSearchParams(window.location.search);
+        const callbackUrl = searchParams.get('callbackUrl');
+        
+        if (callbackUrl) {
+          navigate({ to: callbackUrl });
+        } else {
+          // If no callback URL, determine if they need onboarding or dashboard.
+          // For now, default to dashboard. (User can change this logic if they prefer onboarding first).
+          navigate({ to: "/dashboard" });
+        }
       }, 800);
 
     } catch (err: any) {

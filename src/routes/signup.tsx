@@ -46,7 +46,14 @@ function SignUpPage() {
     }
 
     console.log("Success! Account created:", data);
-    navigate({ to: "/login" });
+    
+    // Auto-login the user using the credentials returned from registration
+    if (data.token) {
+      localStorage.setItem("auth_token", data.token);
+      localStorage.setItem("user_profile", JSON.stringify(data.user));
+    }
+    
+    navigate({ to: "/onboarding" });
   } catch (err: any) {
     // Enhanced Frontend Debugging Logic
     console.error("Full Fetch Error Object:", err);
