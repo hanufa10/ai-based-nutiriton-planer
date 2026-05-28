@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 function NotFoundComponent() {
   return (
@@ -121,7 +122,9 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      <ProtectedRoute>
+        <Outlet />
+      </ProtectedRoute>
     </QueryClientProvider>
   );
 }
