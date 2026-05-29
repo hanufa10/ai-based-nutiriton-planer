@@ -1,8 +1,12 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Search, Filter, Plus, Star, X } from "lucide-react";
+import { Search, Filter, Plus, Star, X, Loader2 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { Card } from "@/components/ui-bits";
+import type { FoodItem } from "@/lib/api-types";
+import { getFoodItems } from "@/lib/api/foods";
+import { foodDisplayTag, uniqueCategories } from "@/lib/foodDisplay";
+import { LogFoodForm } from "@/components/log-food-form";
 
 export const Route = createFileRoute("/library")({
   head: () => ({
@@ -14,29 +18,6 @@ export const Route = createFileRoute("/library")({
   component: LibraryPage,
 });
 
-const initialCategories = [
-  { label: "All", count: 12480 },
-  { label: "Proteins", count: 1820 },
-  { label: "Grains", count: 940 },
-  { label: "Vegetables", count: 2110 },
-  { label: "Fruits", count: 760 },
-  { label: "Dairy", count: 540 },
-  { label: "Nuts & seeds", count: 320 },
-  { label: "Snacks", count: 1180 },
-];
-
-const initialFoods = [
-  { name: "Wild salmon fillet", brand: "Fresh market", kcal: 208, p: 22, c: 0, f: 13, tag: "leaf", category: "Proteins" },
-  { name: "Quinoa, cooked", brand: "Whole grain", kcal: 222, p: 8, c: 39, f: 4, tag: "citrus", category: "Grains" },
-  { name: "Greek yogurt 2%", brand: "Fage", kcal: 130, p: 18, c: 6, f: 4, tag: "lavender", category: "Dairy" },
-  { name: "Avocado", brand: "Hass", kcal: 234, p: 3, c: 12, f: 21, tag: "leaf", category: "Fruits" },
-  { name: "Chicken breast", brand: "Organic", kcal: 165, p: 31, c: 0, f: 4, tag: "berry", category: "Proteins" },
-  { name: "Sweet potato", brand: "Roasted", kcal: 180, p: 4, c: 41, f: 0, tag: "citrus", category: "Vegetables" },
-  { name: "Almonds, raw", brand: "Blue Diamond", kcal: 164, p: 6, c: 6, f: 14, tag: "lavender", category: "Nuts & seeds" },
-  { name: "Blueberries", brand: "Fresh", kcal: 84, p: 1, c: 21, f: 0, tag: "berry", category: "Fruits" },
-  { name: "Brown rice", brand: "Lundberg", kcal: 216, p: 5, c: 45, f: 2, tag: "citrus", category: "Grains" },
-];
-
 const tagBg: Record<string, string> = {
   leaf: "bg-leaf/15",
   citrus: "bg-citrus/20",
@@ -45,14 +26,16 @@ const tagBg: Record<string, string> = {
 };
 
 function LibraryPage() {
-  // --- STATE MANAGEMENT ---
-  const [foods, setFoods] = useState(initialFoods);
+  const [foods, setFoods] = useState<FoodItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
-  const [favorites, setFavorites] = useState<Record<string, boolean>>({ "Wild salmon fillet": true });
+  const [favorites, setFavorites] = useState<Record<string, boolean>>({});
   
   // UI Modal Controls
   const [isNewFoodModalOpen, setIsNewFoodModalOpen] = useState(false);
+  const [logFood, setLogFood] = useState<FoodItem | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Form State for Adding Custom Food
@@ -72,27 +55,34 @@ function LibraryPage() {
     }));
   };
 
-  const handleAddToToday = (foodName: string) => {
-    setToastMessage(`Added 100g of "${foodName}" to today's tracker!`);
-    setTimeout(() => setToastMessage(null), 3000);
+  const handleAddToToday = (food: FoodItem) => {
+    if (food.foodId <= 0) {
+      setToastMessage("Save custom foods to the server first (admin) before logging.");
+      setTimeout(() => setToastMessage(null), 4000);
+      return;
+    }
+    setLogFood(food);
+  };
+
+  const handleLogSuccess = (foodName: string) => {
+    setLogFood(null);
+    setToastMessage(`Logged "${foodName}" to today's meals. Check planner or dashboard.`);
+    setTimeout(() => setToastMessage(null), 4000);
   };
 
   const handleCreateFoodSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim() || !newBrand.trim()) return;
 
-    const tags = ["leaf", "citrus", "lavender", "berry"];
-    const randomTag = tags[Math.floor(Math.random() * tags.length)];
-
-    const createdItem = {
-      name: newName,
-      brand: newBrand,
-      kcal: parseInt(newKcal, 10) || 0,
-      p: parseInt(newP, 10) || 0,
-      c: parseInt(newC, 10) || 0,
-      f: parseInt(newF, 10) || 0,
-      tag: randomTag,
+    const createdItem: FoodItem = {
+      foodId: -(Date.now() % 1000000),
+      foodName: newName,
+      foodCalories: parseInt(newKcal, 10) || 0,
+      foodProtein: parseInt(newP, 10) || 0,
+      carbs: parseInt(newC, 10) || 0,
+      fat: parseInt(newF, 10) || 0,
       category: newCategory,
+      foodType: null,
     };
 
     setFoods((prev) => [createdItem, ...prev]);
@@ -107,15 +97,38 @@ function LibraryPage() {
     setNewF("");
   };
 
-  // --- MEMOIZED FILTERING ---
+  useEffect(() => {
+    let mounted = true;
+    const loadFoods = async () => {
+      setLoading(true);
+      setLoadError(null);
+      try {
+        const items = await getFoodItems();
+        if (!mounted) return;
+        setFoods(items);
+      } catch (error) {
+        if (!mounted) return;
+        setLoadError(error instanceof Error ? error.message : "Failed to load food library.");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    loadFoods();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const categories = useMemo(() => ["All", ...uniqueCategories(foods)], [foods]);
+
   const filteredFoods = useMemo(() => {
     return foods.filter((food) => {
       const matchesSearch =
-        food.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        food.brand.toLowerCase().includes(searchQuery.toLowerCase());
-        
-      const matchesCategory =
-        activeCategory === "All" || food.category === activeCategory;
+        food.foodName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (food.category || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (food.foodType || "").toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchesCategory = activeCategory === "All" || food.category === activeCategory;
 
       return matchesSearch && matchesCategory;
     });
@@ -136,7 +149,7 @@ function LibraryPage() {
         )}
 
         <PageHeader
-          eyebrow={`${foods.length + 12471} verified entries`}
+          eyebrow={`${foods.length.toLocaleString()} verified entries`}
           title="Food library"
           description="Search, scan or add custom foods. Every item is reviewed for accurate macros."
           actions={
@@ -168,7 +181,10 @@ function LibraryPage() {
               </button>
             )}
           </div>
-          <button className="flex h-11 items-center gap-2 rounded-xl border border-border px-3 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors">
+          <button
+            type="button"
+            className="flex h-11 items-center gap-2 rounded-xl border border-border px-3 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
+          >
             <Filter className="h-4 w-4" /> Filters
           </button>
         </Card>
@@ -181,21 +197,26 @@ function LibraryPage() {
               Categories
             </div>
             <ul className="space-y-1">
-              {initialCategories.map((c) => {
-                const isActive = activeCategory === c.label;
+              {categories.map((c) => {
+                const isActive = activeCategory === c;
+                const count =
+                  c === "All"
+                    ? foods.length
+                    : foods.filter((f) => (f.category || "") === c).length;
                 return (
-                  <li key={c.label}>
+                  <li key={c}>
                     <button
-                      onClick={() => setActiveCategory(c.label)}
+                      type="button"
+                      onClick={() => setActiveCategory(c)}
                       className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors ${
                         isActive
                           ? "bg-leaf-soft font-semibold text-primary"
                           : "text-foreground hover:bg-muted"
                       }`}
                     >
-                      <span>{c.label}</span>
+                      <span>{c}</span>
                       <span className="text-[11px] text-muted-foreground">
-                        {c.label === "All" ? foods.length + 12471 : c.count.toLocaleString()}
+                        {count.toLocaleString()}
                       </span>
                     </button>
                   </li>
@@ -206,11 +227,28 @@ function LibraryPage() {
 
           {/* RIGHT: Grid Grid list output filtered array mapping */}
           <div>
-            {filteredFoods.length === 0 ? (
+            {loading ? (
+              <Card className="flex flex-col items-center justify-center p-12 text-center text-muted-foreground">
+                <Loader2 className="h-8 w-8 mb-2 animate-spin opacity-70" />
+                <p className="text-sm font-medium">Loading food library...</p>
+              </Card>
+            ) : loadError ? (
+              <Card className="flex flex-col items-center justify-center p-12 text-center text-muted-foreground">
+                <p className="text-sm font-medium text-destructive">{loadError}</p>
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="mt-2 text-xs text-primary underline"
+                >
+                  Reload
+                </button>
+              </Card>
+            ) : filteredFoods.length === 0 ? (
               <Card className="flex flex-col items-center justify-center p-12 text-center text-muted-foreground">
                 <Search className="h-8 w-8 mb-2 opacity-40" />
                 <p className="text-sm font-medium">No results found for your filters.</p>
-                <button 
+                <button
+                  type="button"
                   onClick={() => { setSearchQuery(""); setActiveCategory("All"); }}
                   className="mt-2 text-xs text-primary underline"
                 >
@@ -220,43 +258,48 @@ function LibraryPage() {
             ) : (
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {filteredFoods.map((f) => {
-                  const isFav = !!favorites[f.name];
+                  const isFav = !!favorites[f.foodName];
+                  const tag = foodDisplayTag(f);
                   return (
                     <article
-                      key={f.name}
+                      key={f.foodId}
                       className="group rounded-2xl border border-border bg-card p-4 transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]"
                     >
                       <div className="flex items-start justify-between">
-                        <div className={`h-12 w-12 rounded-xl ${tagBg[f.tag]}`} />
-                        <button 
-                          onClick={() => handleToggleFavorite(f.name)}
+                        <div className={`h-12 w-12 rounded-xl ${tagBg[tag]}`} />
+                        <button
+                          type="button"
+                          onClick={() => handleToggleFavorite(f.foodName)}
                           className={`transition-colors ${isFav ? "text-amber-500 hover:text-amber-600" : "text-muted-foreground hover:text-citrus"}`}
                         >
                           <Star className="h-4 w-4" fill={isFav ? "currentColor" : "none"} />
                         </button>
                       </div>
                       <div className="mt-3 font-display text-base font-semibold leading-tight">
-                        {f.name}
+                        {f.foodName}
                       </div>
-                      <div className="text-xs text-muted-foreground">{f.brand} · per 100g</div>
+                      <div className="text-xs text-muted-foreground">
+                        {(f.category || f.foodType || "General").toString()} · per 100g
+                      </div>
                       <div className="mt-3 flex items-baseline gap-1">
-                        <span className="font-display text-2xl font-semibold">{f.kcal}</span>
+                        <span className="font-display text-2xl font-semibold">{Math.round(f.foodCalories || 0)}</span>
                         <span className="text-xs text-muted-foreground">kcal</span>
                       </div>
                       <div className="mt-3 grid grid-cols-3 gap-1.5 text-[11px]">
                         <div className="rounded-md bg-leaf/10 px-2 py-1 text-center font-semibold text-foreground">
-                          P {f.p}g
+                          P {Math.round(f.foodProtein || 0)}g
                         </div>
                         <div className="rounded-md bg-citrus/15 px-2 py-1 text-center font-semibold text-foreground">
-                          C {f.c}g
+                          C {Math.round(f.carbs || 0)}g
                         </div>
                         <div className="rounded-md bg-lavender/15 px-2 py-1 text-center font-semibold text-foreground">
-                          F {f.f}g
+                          F {Math.round(f.fat || 0)}g
                         </div>
                       </div>
                       
-                      <button 
-                        onClick={() => handleAddToToday(f.name)}
+                      <button
+                        type="button"
+                        onClick={() => handleAddToToday(f)}
                         className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary py-2 text-xs font-semibold text-primary-foreground opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
                       >
                         <Plus className="h-3.5 w-3.5" /> Add to today
@@ -268,6 +311,29 @@ function LibraryPage() {
             )}
           </div>
         </div>
+
+        {logFood && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+            <Card className="w-full max-w-md p-6 relative bg-card shadow-2xl border border-border">
+              <button
+                type="button"
+                onClick={() => setLogFood(null)}
+                className="absolute right-4 top-4 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <h3 className="font-display text-lg font-semibold mb-1">Log to today</h3>
+              <p className="text-xs text-muted-foreground mb-4">
+                This saves to your meal log and updates dashboard &amp; progress.
+              </p>
+              <LogFoodForm
+                preselectedFood={logFood}
+                onCancel={() => setLogFood(null)}
+                onSuccess={() => handleLogSuccess(logFood.foodName)}
+              />
+            </Card>
+          </div>
+        )}
 
         {/* --- ADD NEW FOOD MODAL OVERLAY --- */}
         {isNewFoodModalOpen && (
@@ -328,8 +394,10 @@ function LibraryPage() {
                       onChange={(e) => setNewCategory(e.target.value)}
                       className="w-full text-xs px-2.5 py-2 rounded-lg border border-border bg-muted/20 focus:outline-none focus:ring-1 focus:ring-primary"
                     >
-                      {initialCategories.filter(c => c.label !== "All").map(c => (
-                        <option key={c.label} value={c.label}>{c.label}</option>
+                      {categories.filter((c) => c !== "All").map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
                       ))}
                     </select>
                   </div>
