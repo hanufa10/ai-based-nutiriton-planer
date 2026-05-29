@@ -1,292 +1,239 @@
 import { useState, useRef, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Sparkles, Send, Lightbulb, Salad, Dumbbell, Droplets, X, Settings } from "lucide-react";
+import { Sparkles, Send, User, Mail, Loader2 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { Card } from "@/components/ui-bits";
+import emailjs from "@emailjs/browser";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const Route = createFileRoute("/coach")({
-  head: () => ({
-    meta: [
-      { title: "AI Coach — NutriSmart" },
-      { name: "description", content: "Personalized coaching that learns from your meals and goals." },
-    ],
-  }),
   component: CoachPage,
 });
 
-const initialMessages = [
-  { from: "coach", text: "Morning, Maya. I noticed your protein dipped Wednesday. Want me to add a 20g snack to today's plan?" },
-  { from: "user", text: "Yes please — keep it under 200 kcal." },
-  { from: "coach", text: "Done. I added a Greek yogurt + almond cup at 3:30 PM (180 kcal, 22g protein). Closes your ring nicely." },
-];
+interface Message {
+  from: "coach" | "user" | "system" | "nutritionist";
+  text: string;
+}
 
-const prompts = [
-  { icon: Salad, t: "Suggest a low-carb dinner using salmon" },
-  { icon: Dumbbell, t: "Build a high-protein day for leg day" },
-  { icon: Droplets, t: "Why am I always thirsty in the afternoon?" },
-];
+type ChatStatus = "chatting" | "suggest_handoff" | "with_nutritionist" | "ended";
 
-// Simple dictionary mapping keywords to contextual mock coach responses
-const aiResponses: Record<string, string> = {
-  salmon: "For a lean, low-carb setup, try pan-searing 150g of Wild Salmon fillet in 1 tsp olive oil. Pair it with air-fried asparagus and a side of mashed cauliflower with garlic. Total macros: ~340 kcal, 35g protein, 6g net carbs.",
-  leg: "On high-volume training days, we want to maximize glycogen replenishment! Let's hit 2,100 kcal today. Aim for an overnight oat bowl for breakfast (protein powder + banana), a massive tofu/chicken bowl for lunch, and a sweet potato mash base at dinner.",
-  thirsty: "Afternoon dehydration is common if your mineral balance dips post-workout. Since you hit a strength session early, make sure you're taking in electrolytes (magnesium/sodium) with your 2PM hydration window, rather than just plain water.",
-  default: "That's an excellent angle to focus on! To tailor that precisely to your current profile, should we adjust your primary daily targets, or design a specific meal structure for tomorrow's logging sequence?"
-};
+const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY || "");
 
-function CoachPage() {
-  // --- STATE MANAGEMENT ---
-  const [messages, setMessages] = useState(initialMessages);
+export function CoachPage() {
+  const [messages, setMessages] = useState<Message[]>([
+    { from: "coach", text: "Morning! I'm Sage, your AI companion. Ask me anything about your meals or macro balances today!" }
+  ]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [preferences, setPreferences] = useState([
-    "Vegetarian, no shellfish",
-    "Goal: 128g protein / day",
-    "Trains 4x weekly (strength)",
-    "Avoids ultra-processed foods"
-  ]);
-  
-  // UI Controls
-  const [isPrefModalOpen, setIsPrefModalOpen] = useState(false);
-  const [newPrefInput, setNewPrefInput] = useState("");
+  const [chatStatus, setChatStatus] = useState<ChatStatus>("chatting");
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
-  // --- AUTOMATIC SCROLL TO BOTTOM ---
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
-  // --- CORE SYSTEM CHAT ACTION CORE LOGIC ---
-  const handleSendMessage = (textToSend: string) => {
-    if (!textToSend.trim()) return;
+  const sendConversationToEmail = async (nutritionistQuestion: string, currentHistory: Message[]) => {
+    setIsSendingEmail(true);
+    try {
+      const transcript = currentHistory
+        .map((m) => `${m.from.toUpperCase()}: ${m.text}`)
+        .join("\n");
 
-    // 1. Append User Message
-    const updatedMessages = [...messages, { from: "user", text: textToSend }];
+      const templateParams = {
+        user_name: "hanan",
+        user_new_question: nutritionistQuestion,
+        chat_transcript: transcript,
+      };
+
+      await emailjs.send(
+        import.meta.env.VITE_EMAILJS_SERVICE_ID,
+        import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
+        templateParams,
+        import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+      );
+    } catch (error) {
+      console.error("Email setup error:", error);
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
+  const handleSendMessage = async (textToSend: string) => {
+    if (!textToSend.trim() || isTyping) return;
+
+    // Handoff Logic
+    if (chatStatus === "with_nutritionist") {
+      const updatedHistory: Message[] = [...messages, { from: "user", text: textToSend }];
+      setMessages(updatedHistory);
+      setInputValue("");
+      sendConversationToEmail(textToSend, updatedHistory);
+
+      setTimeout(() => {
+        setMessages((prev) => [
+          ...prev,
+          { from: "nutritionist", text: "Your message has been routed to Hanan. You will receive an assessment directly back at your account's email address." }
+        ]);
+      }, 1000);
+      return;
+    }
+
+    // AI Logic
+    const updatedMessages: Message[] = [...messages, { from: "user", text: textToSend }];
     setMessages(updatedMessages);
     setInputValue("");
     setIsTyping(true);
 
-    // 2. Determine Simulated Context Response based on text keywords
-    const cleanText = textToSend.toLowerCase();
-    let responseText = aiResponses.default;
-    
-    if (cleanText.includes("salmon") || cleanText.includes("carb")) responseText = aiResponses.salmon;
-    else if (cleanText.includes("leg") || cleanText.includes("protein")) responseText = aiResponses.leg;
-    else if (cleanText.includes("thirsty") || cleanText.includes("water")) responseText = aiResponses.thirsty;
+    try {
+      const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
+      const result = await model.generateContent({
+        contents: updatedMessages
+          .filter((m) => m.from === "user" || m.from === "coach")
+          .map((m) => ({ role: m.from === "user" ? "user" : "model", parts: [{ text: m.text }] }))
+      });
 
-    // 3. Trigger Mock Engine Stream Delay
-    setTimeout(() => {
+      const responseText = result.response.text();
+
+      if (responseText.includes("[ESC]")) {
+        const cleanText = responseText.replace("[ESC]", "").trim();
+        setMessages((prev) => [...prev, { from: "coach", text: cleanText }]);
+        setChatStatus("suggest_handoff");
+      } else {
+        setMessages((prev) => [...prev, { from: "coach", text: responseText }]);
+      }
+    } catch (error: any) {
+      console.error("API Error details:", error);
+
+      let errorMessage = "I'm sorry, I'm having trouble connecting to my brain right now.";
+
+      // Specific check for 503 Service Unavailable
+      const errorString = error.toString();
+      if (errorString.includes("503")) {
+        errorMessage = "The AI service is temporarily overloaded. Please wait a few seconds and try sending your message again.";
+      } else if (errorString.includes("429")) {
+        errorMessage = "I'm being asked too many questions at once! Let's slow down for a second.";
+      } else if (errorString.includes("Failed to fetch") || !navigator.onLine) {
+        errorMessage = "It looks like you're offline. Please check your internet connection.";
+      }
+
+      setMessages((prev) => [
+        ...prev,
+        { from: "coach", text: errorMessage }
+      ]);
+    } finally {
       setIsTyping(false);
-      setMessages((prev) => [...prev, { from: "coach", text: responseText }]);
-    }, 1200);
+    }
   };
 
-  // --- PREFERENCE PANEL UPDATER ---
-  const handleAddPreference = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPrefInput.trim()) return;
-    setPreferences((prev) => [...prev, newPrefInput.trim()]);
-    setNewPrefInput("");
+  const handleAcceptHandoff = () => {
+    setChatStatus("with_nutritionist");
+    setMessages((prev) => [
+      ...prev,
+      { from: "system", text: "🔒 AI Session closed. Channel routed to: hananfatih012@gmail.com. Type your specific query for the expert below." }
+    ]);
   };
-
-  const handleRemovePreference = (index: number) => {
-    setPreferences((prev) => prev.filter((_, idx) => idx !== index));
+  const handleReturnToAI = () => {
+    setChatStatus("chatting");
+    setMessages((prev) => [
+      ...prev,
+      { from: "system", text: "🔒 Human specialist channel closed. Reconnecting to Sage AI..." },
+      { from: "coach", text: "I'm back! How else can I help you with your nutrition goals today?" }
+    ]);
+  };
+  const handleStopConversation = () => {
+    setChatStatus("ended");
+    setMessages((prev) => [
+      ...prev,
+      { from: "coach", text: "Thank you for using NutriSmart. I have closed this active tracking thread. Have a healthy day!" }
+    ]);
   };
 
   return (
     <AppShell>
-      <div className="space-y-6 p-6 relative">
-        <PageHeader
-          eyebrow="Always learning"
-          title="AI coach"
-          description="Ask anything about meals, macros or training. I remember your preferences and goals."
-        />
-
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-          
-          {/* MAIN COLUMN: CONVERSATIONAL INTERFACE PLATFORM */}
-          <Card className="flex h-[600px] flex-col p-0 overflow-hidden border border-border shadow-sm">
-            {/* Thread Header Banner */}
-            <div className="flex items-center gap-3 border-b border-border px-6 py-4 bg-card">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary shadow-sm">
-                <Sparkles className="h-5 w-5 text-leaf animate-pulse" />
-              </div>
-              <div>
-                <div className="font-display text-base font-semibold">Sage</div>
-                <div className="text-xs text-leaf font-medium flex items-center gap-1.5">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-leaf animate-ping" />
-                  Online · personalized for Maya
+      <div className="max-w-4xl mx-auto space-y-6 p-6">
+        <PageHeader eyebrow="Fully Dynamic AI Enabled" title="AI Nutritionist Portal" description="Intelligent triage system routing automated assistance into human care structures smoothly." />
+        <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
+          <Card className="flex h-[550px] flex-col p-0 overflow-hidden border border-border">
+            <div className={`flex items-center justify-between border-b px-6 py-4 transition-colors ${chatStatus === "with_nutritionist" ? "bg-amber-50/40 border-amber-100" : "bg-card"}`}>
+              <div className="flex items-center gap-3">
+                <div className={`flex h-10 w-10 items-center justify-center rounded-xl text-white ${chatStatus === "with_nutritionist" ? "bg-amber-500" : "bg-primary"}`}>
+                  {chatStatus === "with_nutritionist" ? <User className="h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
+                </div>
+                <div>
+                  <div className="text-sm font-bold">{chatStatus === "with_nutritionist" ? "Human Specialist Channel" : "Sage AI Agent"}</div>
+                  <div className="text-[11px] font-medium opacity-70">{chatStatus === "with_nutritionist" ? "Forwarding to hananfatih012@gmail.com" : "Online Engine"}</div>
                 </div>
               </div>
             </div>
 
-            {/* Conversational Scroll View Area */}
-            <div className="flex-1 space-y-4 overflow-y-auto px-6 py-6 bg-muted/10">
-              {messages.map((m, i) => (
-                <div
-                  key={i}
-                  className={`flex ${m.from === "user" ? "justify-end" : "justify-start"} animate-in fade-in slide-in-from-bottom-2 duration-200`}
-                >
-                  <div
-                    className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm ${
-                      m.from === "user"
-                        ? "rounded-br-sm bg-primary text-primary-foreground font-medium"
-                        : "rounded-bl-sm bg-leaf-soft text-primary border border-leaf/10"
-                    }`}
-                  >
-                    {m.text}
-                  </div>
-                </div>
-              ))}
-
-              {/* Animated Core Processing Status Flag Node */}
-              {isTyping && (
-                <div className="flex justify-start animate-in fade-in duration-100">
-                  <div className="rounded-2xl rounded-bl-sm bg-muted border border-border/40 px-4 py-3">
-                    <div className="flex gap-1.5 items-center h-4">
-                      <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.3s]" />
-                      <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]" />
-                      <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground" />
+            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 bg-muted/10">
+              {messages.map((m, idx) => {
+                if (m.from === "system") return (<div key={idx} className="text-center py-2 text-[11px] font-semibold text-muted-foreground bg-muted/60 rounded-lg max-w-md mx-auto border">{m.text}</div>);
+                const isUser = m.from === "user";
+                const isNutritionist = m.from === "nutritionist";
+                return (
+                  <div key={idx} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+                    <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-xs font-medium leading-relaxed shadow-sm ${isUser ? "bg-primary text-primary-foreground rounded-br-none" : isNutritionist ? "bg-amber-100 text-amber-900 rounded-bl-none border border-amber-200" : "bg-leaf-soft text-primary rounded-bl-none"}`}>
+                      {m.text}
                     </div>
                   </div>
-                </div>
-              )}
+                );
+              })}
+              {isTyping && (<div className="flex justify-start"><span className="text-xs text-muted-foreground animate-pulse font-medium">Sage is generating thoughts...</span></div>)}
+              {isSendingEmail && (<div className="flex justify-end items-center gap-1.5 text-[10px] text-muted-foreground animate-pulse font-semibold"><Loader2 className="h-3 w-3 animate-spin text-amber-500" /> Dispatching copy to Specialist...</div>)}
               <div ref={chatEndRef} />
             </div>
 
-            {/* Input Action Form Tray */}
-            <div className="border-t border-border p-4 bg-card">
-              <form 
-                onSubmit={(e) => { e.preventDefault(); handleSendMessage(inputValue); }}
-                className="flex items-center gap-2 rounded-2xl border border-border bg-muted/40 px-4 py-1.5 focus-within:bg-background focus-within:ring-2 focus-within:ring-ring/40 transition-all"
-              >
-                <input
-                  type="text"
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  placeholder="Ask Sage anything about macros, meals, or targets…"
-                  className="flex-1 bg-transparent py-2.5 text-sm focus:outline-none"
-                  disabled={isTyping}
-                />
-                <button 
-                  type="submit"
-                  disabled={!inputValue.trim() || isTyping}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-40 transition-opacity"
-                >
-                  <Send className="h-4 w-4" />
-                </button>
-              </form>
+            <div className="border-t p-4 bg-card">
+              {isTyping && <p className="text-[10px] text-amber-600 mb-2 font-semibold">Sage is busy processing, please wait...</p>}
+              {chatStatus === "suggest_handoff" ? (
+                <div className="flex flex-col items-center gap-3 p-2 bg-amber-50/50 rounded-xl border border-amber-200/60">
+                  <p className="text-xs font-bold text-amber-900 text-center flex items-center gap-1.5"><Mail className="h-3.5 w-3.5 text-amber-600" /> Would you like to scale this inquiry up to our human expert team?</p>
+                  <div className="flex gap-2 w-full max-w-xs">
+                    <button onClick={handleStopConversation} className="flex-1 py-2 text-xs font-bold bg-muted border rounded-xl hover:bg-muted/80">Stop Session</button>
+                    <button onClick={handleAcceptHandoff} className="flex-1 py-2 text-xs font-bold bg-amber-500 text-white rounded-xl hover:bg-amber-600 shadow-sm">Talk to Nutritionist</button>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(inputValue); }} className={`flex items-center gap-2 rounded-xl border bg-muted/20 px-3 py-1 ${isTyping ? "opacity-50 pointer-events-none" : ""}`}>
+                  <input type="text" disabled={chatStatus === "ended" || isTyping} value={inputValue} onChange={(e) => setInputValue(e.target.value)} placeholder={chatStatus === "with_nutritionist" ? "Compose message for human specialist..." : "Ask your AI companion anything..."} className="flex-1 bg-transparent py-2 text-xs focus:outline-none" />
+                  <button type="submit" disabled={!inputValue.trim() || chatStatus === "ended" || isTyping} className="p-2 bg-primary text-primary-foreground rounded-lg"><Send className="h-3 w-3" /></button>
+                </form>
+              )}
             </div>
           </Card>
-
-          {/* SIDEBAR HOVER: PROMPT PRESETS & ENGINE DIRECTORY */}
           <div className="space-y-4">
-            <Card>
-              <div className="flex items-center gap-2">
-                <Lightbulb className="h-4 w-4 text-citrus" />
-                <h3 className="font-display text-md font-semibold">Try asking</h3>
-              </div>
-              <div className="mt-4 space-y-2">
-                {prompts.map((p) => {
-                  const Icon = p.icon;
-                  return (
-                    <button
-                      key={p.t}
-                      onClick={() => handleSendMessage(p.t)}
-                      disabled={isTyping}
-                      className="flex w-full items-start gap-3 rounded-xl border border-border bg-card p-3 text-left text-xs font-medium transition-all hover:border-leaf hover:bg-leaf-soft disabled:opacity-50 group"
-                    >
-                      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-leaf group-hover:scale-110 transition-transform" />
-                      <span>{p.t}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </Card>
+            <Card className="text-center p-4 space-y-4">
+              <h4 className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">Channel Status</h4>
 
-            {/* PREFERENCE DATA MONITOR COMPONENT OVERLAY LINK */}
-            <Card className="bg-[var(--gradient-hero)] text-primary-foreground shadow-md relative overflow-hidden">
-              <div className="text-xs font-bold uppercase tracking-wider text-primary-foreground/70 flex items-center justify-between">
-                <span>Sage knows</span>
-                <Settings className="h-3.5 w-3.5 opacity-60" />
+              <div className="inline-flex mx-auto items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold capitalize bg-muted border">
+                <span className={`h-2 w-2 rounded-full ${chatStatus === "chatting" ? "bg-leaf animate-pulse" : chatStatus === "with_nutritionist" ? "bg-amber-500" : "bg-destructive"}`} />
+                {chatStatus.replace("_", " ")}
               </div>
-              <ul className="mt-3 space-y-1.5 text-xs font-medium">
-                {preferences.map((pref, idx) => (
-                  <li key={idx} className="truncate">• {pref}</li>
-                ))}
-              </ul>
-              <button 
-                onClick={() => setIsPrefModalOpen(true)}
-                className="mt-4 text-xs font-bold text-leaf hover:underline flex items-center gap-1 focus:outline-none"
-              >
-                Update preferences →
-              </button>
+
+              <div className="pt-2 space-y-2">
+                {chatStatus === "chatting" && (
+                  <button
+                    onClick={handleAcceptHandoff}
+                    className="w-full py-2.5 px-4 bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold rounded-lg shadow-sm transition-all transform active:scale-95"
+                  >
+                    Request Human Expert
+                  </button>
+                )}
+
+                {chatStatus === "with_nutritionist" && (
+                  <button
+                    onClick={handleReturnToAI}
+                    className="w-full py-2.5 px-4 bg-primary hover:bg-primary/90 text-primary-foreground text-[11px] font-bold rounded-lg shadow-sm transition-all transform active:scale-95"
+                  >
+                    Return to AI Assistant
+                  </button>
+                )}
+              </div>
             </Card>
           </div>
         </div>
-
-        {/* --- INTERACTIVE PREFERENCE CONTROL DRAWER --- */}
-        {isPrefModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in">
-            <Card className="w-full max-w-sm p-5 relative bg-card shadow-2xl border border-border animate-in scale-in-95">
-              <button 
-                onClick={() => setIsPrefModalOpen(false)}
-                className="absolute right-4 top-4 text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
-              
-              <h3 className="font-display text-base font-semibold mb-1">Update Core Preferences</h3>
-              <p className="text-xs text-muted-foreground mb-4">Edit configuration guidelines that shape Sage's real-time nutrition insight responses.</p>
-              
-              {/* Insert Form */}
-              <form onSubmit={handleAddPreference} className="flex gap-2 mb-4">
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g., Lactose intolerant, Goal 2k kcal"
-                  value={newPrefInput}
-                  onChange={(e) => setNewPrefInput(e.target.value)}
-                  className="flex-1 text-xs px-3 py-2 rounded-lg border border-border bg-muted/40 focus:outline-none focus:ring-1 focus:ring-primary"
-                />
-                <button 
-                  type="submit" 
-                  className="bg-primary text-primary-foreground px-3 text-xs rounded-lg font-semibold hover:opacity-90"
-                >
-                  Add
-                </button>
-              </form>
-
-              {/* Dynamic Content List Render */}
-              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                {preferences.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-4">No custom preferences registered.</p>
-                ) : (
-                  preferences.map((pref, i) => (
-                    <div key={i} className="flex items-center justify-between text-xs p-2 bg-muted/60 rounded-lg border border-border/40 font-medium">
-                      <span className="truncate pr-2">{pref}</span>
-                      <button 
-                        type="button"
-                        onClick={() => handleRemovePreference(i)} 
-                        className="text-muted-foreground hover:text-berry shrink-0"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              <button
-                onClick={() => setIsPrefModalOpen(false)}
-                className="w-full mt-4 text-xs font-semibold py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-95 text-center"
-              >
-                Finish Config Changes
-              </button>
-            </Card>
-          </div>
-        )}
-
       </div>
     </AppShell>
   );

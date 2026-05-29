@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/sheet";
 
 type NavItem = {
-  to: "/dashboard" | "/planner" | "/library" | "/progress" | "/coach" | "/settings";
+  to: "/dashboard" | "/planner" | "/library" | "/progress" | "/coach" | "/settings" | "/feedback";
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   exact?: boolean;
@@ -36,6 +36,7 @@ const nav: NavItem[] = [
   { to: "/library", label: "Food library", icon: Apple },
   { to: "/progress", label: "Progress", icon: Activity },
   { to: "/coach", label: "AI coach", icon: Sparkles },
+  { to: "/feedback", label: "Feedback", icon: Bell },
 ];
 
 interface AppShellProps {
