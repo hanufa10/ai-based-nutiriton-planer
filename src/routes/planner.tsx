@@ -329,8 +329,10 @@ function PlannerPage() {
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_320px]">
           <div className="space-y-6">
-            <Card className="overflow-hidden p-0">
-              <div className="grid grid-cols-[120px_repeat(7,minmax(0,1fr))] border-b border-border bg-muted/30">
+            <div className="overflow-x-auto pb-2 -mx-6 px-6 xl:mx-0 xl:px-0">
+              <div className="min-w-[850px]">
+                <Card className="overflow-hidden p-0">
+                  <div className="grid grid-cols-[120px_repeat(7,minmax(0,1fr))] border-b border-border bg-muted/30">
                 <div className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Slot
                 </div>
@@ -458,7 +460,9 @@ function PlannerPage() {
                   </div>
                 );
               })}
-            </Card>
+                </Card>
+              </div>
+            </div>
           </div>
 
           <aside className="space-y-6">
