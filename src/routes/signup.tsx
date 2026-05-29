@@ -41,7 +41,16 @@ function SignUpPage() {
     const data = await response.json();
 
     if (!response.ok) {
-      // Handles backend-specific errors (e.g., 400 Bad Request, 409 Conflict)
+      // Check if it's a Prisma unique constraint violation (P2002)
+      if (data.error?.code === "P2002") {
+        const target = data.error.meta?.target || [];
+        if (target.includes("username")) {
+          throw new Error("This username/first name is already taken. Please try another one.");
+        }
+        if (target.includes("email")) {
+          throw new Error("An account with this email address already exists. Please sign in instead.");
+        }
+      }
       throw new Error(data.message || `Server responded with status: ${response.status}`);
     }
 
@@ -66,8 +75,8 @@ function SignUpPage() {
         "1. Your backend has blocked this request due to a missing CORS configuration.\n" +
         "2. The server endpoint is completely unreachable or dropped the connection.";
     } else {
-      // Captures any other runtime or parsing errors
-      detailedErrorMessage = `Error Name: ${err.name} \nMessage: ${err.message}`;
+      // Captures any other runtime or parsing errors gracefully
+      detailedErrorMessage = err.message || "An unexpected error occurred. Please try again.";
     }
 
     setError(detailedErrorMessage);
