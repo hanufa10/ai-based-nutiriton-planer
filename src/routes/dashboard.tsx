@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Plus,
@@ -12,9 +12,18 @@ import {
   ChevronRight,
   Sparkles,
   TrendingUp,
+  Loader2,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Ring } from "@/components/ui-bits";
+import { ApiError } from "@/lib/api";
+import { getMealLogs } from "@/lib/api/mealLogs";
+import { getMealPlans, getNutritionTargets } from "@/lib/api/mealPlans";
+import { getProgressSummary } from "@/lib/api/progress";
+import type { MealPlan, MealPlanItem, MealType } from "@/lib/api-types";
+import { toDateKey } from "@/lib/dates";
+import { MEAL_TYPE_TO_SLOT, getItemsForSlot, type SlotLabel } from "@/lib/mealPlanDisplay";
+import { onMealLogUpdated } from "@/lib/mealLogEvents";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -34,55 +43,163 @@ interface UserProfile {
   createdAt: string;
 }
 
+const MEAL_ORDER: MealType[] = ["breakfast", "lunch", "snack", "dinner"];
+
+const MEAL_META: Record<
+  MealType,
+  { icon: typeof Coffee; tint: "leaf" | "citrus" | "berry" | "lavender"; time: string }
+> = {
+  breakfast: { icon: Coffee, tint: "citrus", time: "8:30 AM" },
+  lunch: { icon: Salad, tint: "leaf", time: "12:45 PM" },
+  snack: { icon: Cookie, tint: "berry", time: "3:30 PM" },
+  dinner: { icon: Soup, tint: "lavender", time: "7:15 PM" },
+};
+
+function itemsToMealRow(items: MealPlanItem[]) {
+  const title = items.map((i) => i.food?.foodName || `Food #${i.foodId}`).join(" · ");
+  const kcal = Math.round(items.reduce((s, i) => s + (i.calories || 0), 0));
+  const p = Math.round(items.reduce((s, i) => s + (i.protein || 0), 0));
+  const c = Math.round(items.reduce((s, i) => s + (i.carbs || 0), 0));
+  const f = Math.round(items.reduce((s, i) => s + (i.fat || 0), 0));
+  return { title, sub: `${items.length} item${items.length === 1 ? "" : "s"}`, kcal, macros: { p, c, f } };
+}
+
 function DashboardPage() {
-  // --- STATE FOR LOGGED IN USER ---
+  const todayKey = toDateKey(new Date());
+  const todayLabel = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+  });
+
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [water, setWater] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // --- STATE FOR DYNAMIC METRICS ---
-  const [water, setWater] = useState(2.1); // in Liters
-  const [calories, setCalories] = useState(1480);
-  const [protein, setProtein] = useState(74); // in grams
-  const [streak, setStreak] = useState(12);
+  const [calories, setCalories] = useState(0);
+  const [protein, setProtein] = useState(0);
+  const [carbs, setCarbs] = useState(0);
+  const [fat, setFat] = useState(0);
+  const [calorieTarget, setCalorieTarget] = useState(2050);
+  const [proteinTarget, setProteinTarget] = useState(128);
+  const [carbsGoal, setCarbsGoal] = useState(240);
+  const [fatGoal, setFatGoal] = useState(70);
+  const [todayPlan, setTodayPlan] = useState<MealPlan | null>(null);
+  const [loggedMealTypes, setLoggedMealTypes] = useState<Set<MealType>>(new Set());
+  const [mealsLoggedToday, setMealsLoggedToday] = useState(0);
+  const [adherencePct, setAdherencePct] = useState<number | null>(null);
 
-  // Targets (Constants for this view)
-  const calorieTarget = 2050;
-  const proteinTarget = 128;
   const waterTarget = 2.5;
 
-  // Carbs and Fats metrics (held static for mock purposes)
-  const carbs = 176;
-  const carbsGoal = 240;
-  const fat = 48;
-  const fatGoal = 70;
+  const loadDashboard = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [targets, plans, logs, summary] = await Promise.all([
+        getNutritionTargets().catch((err) => {
+          if (err instanceof ApiError && err.status === 404) return null;
+          throw err;
+        }),
+        getMealPlans(),
+        getMealLogs(todayKey),
+        getProgressSummary(todayKey).catch(() => null),
+      ]);
 
-  // --- SYNC AUTHENTICATION PROFILE ---
+      if (targets) {
+        setCalorieTarget(Math.round(targets.calorieGoal));
+        setProteinTarget(Math.round(targets.proteinGoal));
+        setCarbsGoal(Math.round(targets.carbsGoal));
+        setFatGoal(Math.round(targets.fatGoal));
+      }
+
+      const plan =
+        plans.find((p) => p.planDate.slice(0, 10) === todayKey) ?? null;
+      setTodayPlan(plan);
+
+      const consumed = logs.reduce(
+        (acc, log) => ({
+          calories: acc.calories + (log.caloriesConsumed || 0),
+          protein: acc.protein + (log.proteinConsumed || 0),
+          carbs: acc.carbs + (log.carbsConsumed || 0),
+          fat: acc.fat + (log.fatConsumed || 0),
+        }),
+        { calories: 0, protein: 0, carbs: 0, fat: 0 },
+      );
+      setCalories(Math.round(consumed.calories));
+      setProtein(Math.round(consumed.protein));
+      setCarbs(Math.round(consumed.carbs));
+      setFat(Math.round(consumed.fat));
+      setLoggedMealTypes(new Set(logs.map((l) => l.mealType)));
+      setMealsLoggedToday(logs.length);
+
+      if (summary?.adherencePct != null) {
+        setAdherencePct(Math.round(summary.adherencePct));
+      } else if (targets?.calorieGoal) {
+        setAdherencePct(
+          Math.min(100, Math.round((consumed.calories / targets.calorieGoal) * 100)),
+        );
+      }
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Failed to load dashboard",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [todayKey]);
+
   useEffect(() => {
     try {
       const storedProfile = localStorage.getItem("user_profile");
-      if (storedProfile) {
-        setUser(JSON.parse(storedProfile));
-      }
-    } catch (error) {
-      console.error("Failed to parse user session parameters:", error);
+      if (storedProfile) setUser(JSON.parse(storedProfile));
+    } catch (e) {
+      console.error("Failed to parse user profile:", e);
     }
-  }, []);
+    loadDashboard();
+  }, [loadDashboard]);
 
-  // --- HANDLERS ---
+  useEffect(() => onMealLogUpdated(() => loadDashboard()), [loadDashboard]);
+
+  const plannedMeals = useMemo(() => {
+    if (!todayPlan) return [];
+    let foundNext = false;
+    return MEAL_ORDER.map((mealType) => {
+      const slot = MEAL_TYPE_TO_SLOT[mealType] as SlotLabel;
+      const items = getItemsForSlot(todayPlan, slot);
+      if (!items.length) return null;
+      const row = itemsToMealRow(items);
+      const meta = MEAL_META[mealType];
+      const isLogged = loggedMealTypes.has(mealType);
+      let state: "done" | "next" | "upcoming";
+      if (isLogged) state = "done";
+      else if (!foundNext) {
+        state = "next";
+        foundNext = true;
+      } else state = "upcoming";
+      return { mealType, ...meta, ...row, state };
+    }).filter(Boolean) as Array<{
+      mealType: MealType;
+      icon: typeof Coffee;
+      tint: "leaf" | "citrus" | "berry" | "lavender";
+      time: string;
+      title: string;
+      sub: string;
+      kcal: number;
+      macros: { p: number; c: number; f: number };
+      state: "done" | "next" | "upcoming";
+    }>;
+  }, [todayPlan, loggedMealTypes]);
+
   const handleAddWater = () => {
-    setWater((prev) => {
-      const nextWater = Math.min(waterTarget, Number((prev + 0.25).toFixed(2)));
-      return nextWater;
-    });
+    setWater((prev) => Math.min(waterTarget, Number((prev + 0.25).toFixed(2))));
   };
 
-  const handleApplySuggestion = () => {
-    alert("Suggestion applied! Dinner swapped for cauliflower rice alternatives (-140 kcal target updated).");
-    setCalories((prev) => Math.max(0, prev - 140));
-  };
-
-  const handleGenericAction = (actionName: string) => {
-    alert(`${actionName} feature triggered!`);
-  };
+  const streakDisplay = mealsLoggedToday > 0 ? `${mealsLoggedToday} meals` : "—";
 
   // Percent calculation helpers
   const calPercent = Math.min(100, Math.round((calories / calorieTarget) * 100));
@@ -93,13 +210,36 @@ function DashboardPage() {
   const filledWaterBars = Math.min(8, Math.floor((water / waterTarget) * 8));
 
   // Get localized greeting name capitalizations or standard fallback text
-  const userGreetingName = user?.username 
-    ? user.username.charAt(0).toUpperCase() + user.username.slice(1) 
+  const userGreetingName = user?.username
+    ? user.username.charAt(0).toUpperCase() + user.username.slice(1)
     : "Champion";
+
+  if (loading) {
+    return (
+      <AppShell>
+        <div className="flex min-h-[50vh] items-center justify-center p-6">
+          <Loader2 className="h-8 w-8 animate-spin text-leaf" />
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell>
       <div className="grid grid-cols-1 gap-6 p-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        {error && (
+          <div className="xl:col-span-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {error}
+            {error.toLowerCase().includes("profile") && (
+              <>
+                {" "}
+                <Link to="/onboarding" className="font-semibold underline">
+                  Complete onboarding
+                </Link>
+              </>
+            )}
+          </div>
+        )}
         <div className="space-y-6">
           {/* Hero */}
           <section className="relative overflow-hidden rounded-3xl bg-[var(--gradient-hero)] p-6 text-primary-foreground shadow-[var(--shadow-soft)] sm:p-8">
@@ -118,7 +258,7 @@ function DashboardPage() {
                   style={{ color: "oklch(0.27 0.05 145)" }}
                 >
                   <span className="h-1.5 w-1.5 rounded-full bg-leaf" />
-                  Tuesday · May 19
+                  {todayLabel}
                 </div>
 
                 <h1
@@ -132,7 +272,9 @@ function DashboardPage() {
                   className="mt-2 max-w-md text-sm text-primary-foreground/70"
                   style={{ color: "oklch(0.27 0.05 145)" }}
                 >
-                  You're on a {streak}-day streak. Two balanced meals away from closing every ring today.
+                  {adherencePct != null
+                    ? `You're at ${adherencePct}% of today's calorie goal. ${mealsLoggedToday} meal${mealsLoggedToday === 1 ? "" : "s"} logged so far.`
+                    : `Log meals from your plan to track calories and macros.`}
                 </p>
 
                 <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -170,7 +312,14 @@ function DashboardPage() {
             <QuickTile icon={Flame} label="Calories" value={`${calories.toLocaleString()}`} delta="+120" tint="leaf-soft" iconBg="leaf" />
             <QuickTile icon={Dumbbell} label="Protein" value={`${protein}g`} delta={`${proteinPercent}%`} tint="lavender" iconBg="lavender" />
             <QuickTile icon={Droplets} label="Hydration" value={`${water}L`} delta={`${waterPercent}%`} tint="citrus" iconBg="citrus" />
-            <QuickTile icon={TrendingUp} label="Streak" value={`${streak}d`} delta="Best" tint="berry" iconBg="berry" />
+            <QuickTile
+              icon={TrendingUp}
+              label="Logged today"
+              value={streakDisplay}
+              delta={adherencePct != null ? `${adherencePct}% goal` : "—"}
+              tint="berry"
+              iconBg="berry"
+            />
           </section>
 
           {/* Today's meals */}
@@ -179,59 +328,41 @@ function DashboardPage() {
               <div>
                 <h2 className="font-display text-2xl font-semibold">Today's plan</h2>
                 <p className="text-sm text-muted-foreground">
-                  Crafted by your AI coach · 1,950 kcal target
+                  {todayPlan
+                    ? `From your meal plan · ${calorieTarget.toLocaleString()} kcal target`
+                    : `No plan for today · ${calorieTarget.toLocaleString()} kcal target`}
                 </p>
               </div>
-              <button 
-                onClick={() => handleGenericAction("Customize meals")}
-                className="text-sm font-medium text-leaf hover:underline"
-              >
-                Customize
-              </button>
+              <Link to="/planner" className="text-sm font-medium text-leaf hover:underline">
+                {todayPlan ? "Regenerate in planner" : "Generate plan"}
+              </Link>
             </div>
 
-            <ul className="divide-y divide-border">
-              <Meal
-                icon={Coffee}
-                tint="citrus"
-                time="8:30 AM"
-                title="Greek yogurt bowl"
-                sub="Berries · honey · almonds"
-                kcal={320}
-                macros={{ p: 22, c: 38, f: 9 }}
-                state="done"
-              />
-              <Meal
-                icon={Salad}
-                tint="leaf"
-                time="12:45 PM"
-                title="Quinoa harvest salad"
-                sub="Roasted squash · feta · pecans"
-                kcal={520}
-                macros={{ p: 24, c: 58, f: 18 }}
-                state="done"
-              />
-              <Meal
-                icon={Cookie}
-                tint="berry"
-                time="3:30 PM"
-                title="Protein smoothie"
-                sub="Banana · whey · peanut butter"
-                kcal={280}
-                macros={{ p: 28, c: 26, f: 8 }}
-                state="next"
-              />
-              <Meal
-                icon={Soup}
-                tint="lavender"
-                time="7:15 PM"
-                title="Miso glazed salmon"
-                sub="Brown rice · bok choy · sesame"
-                kcal={620}
-                macros={{ p: 42, c: 54, f: 22 }}
-                state="upcoming"
-              />
-            </ul>
+            {plannedMeals.length > 0 ? (
+              <ul className="divide-y divide-border">
+                {plannedMeals.map((meal) => (
+                  <Meal
+                    key={meal.mealType}
+                    icon={meal.icon}
+                    tint={meal.tint}
+                    time={meal.time}
+                    title={meal.title}
+                    sub={meal.sub}
+                    kcal={meal.kcal}
+                    macros={meal.macros}
+                    state={meal.state}
+                  />
+                ))}
+              </ul>
+            ) : (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                No meal plan for today.{" "}
+                <Link to="/planner" className="font-semibold text-leaf hover:underline">
+                  Open meal planner
+                </Link>{" "}
+                and tap Regen on today&apos;s column.
+              </p>
+            )}
           </section>
         </div>
 
@@ -305,15 +436,18 @@ function DashboardPage() {
               </div>
             </div>
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-              Your dinner runs heavy on carbs. Swap brown rice for cauliflower rice to free up
-              ~140 kcal for tomorrow's long run.
+              {fat > fatGoal * 0.9
+                ? "Fat intake is nearing your daily goal. Consider lighter options for your next meal."
+                : protein < proteinTarget * 0.5
+                  ? "Protein is behind target — prioritize a protein-rich snack or dinner from your plan."
+                  : "Ask Sage in the AI coach for meal swaps tailored to your plan and preferences."}
             </p>
-            <button 
-              onClick={handleApplySuggestion}
+            <Link
+              to="/coach"
               className="mt-4 flex items-center gap-1 text-sm font-semibold text-leaf hover:underline"
             >
-              Apply suggestion <ChevronRight className="h-4 w-4" />
-            </button>
+              Open AI coach <ChevronRight className="h-4 w-4" />
+            </Link>
           </section>
         </aside>
       </div>
