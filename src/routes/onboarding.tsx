@@ -157,7 +157,7 @@ function OnboardingPage() {
       }
 
       // Route smoothly into dashboard view
-      navigate({ to: "/" });
+      navigate({ to: "/dashboard" });
     } catch (error: any) {
       console.error("Critical onboarding form propagation exception caught:", error);
       setErrorMessage(error?.message || "Communication pipeline to Render infrastructure timed out or broke.");

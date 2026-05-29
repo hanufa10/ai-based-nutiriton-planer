@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import {
   LayoutDashboard,
@@ -11,10 +11,11 @@ import {
   Plus,
   Leaf,
   Sparkles,
+  LogOut,
 } from "lucide-react";
 
 type NavItem = {
-  to: "/" | "/planner" | "/library" | "/progress" | "/coach" | "/settings";
+  to: "/dashboard" | "/planner" | "/library" | "/progress" | "/coach" | "/settings";
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   exact?: boolean;
@@ -22,7 +23,7 @@ type NavItem = {
 };
 
 const nav: NavItem[] = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/planner", label: "Meal planner", icon: CalendarDays, badge: "3" },
   { to: "/library", label: "Food library", icon: Apple },
   { to: "/progress", label: "Progress", icon: Activity },
@@ -42,6 +43,13 @@ interface UserProfile {
 
 export function AppShell({ children }: AppShellProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
+  
+  const handleLogout = () => {
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("user_profile");
+    navigate({ to: "/login", replace: true });
+  };
   
   // 1. Manage user state directly inside the shell to ensure persistent hydration
   const [userData, setUserData] = useState<UserProfile | null>(null);
@@ -80,7 +88,7 @@ export function AppShell({ children }: AppShellProps) {
     <div className="min-h-screen bg-background text-foreground">
       <div className="flex">
         <aside className="sticky top-0 hidden h-screen w-[240px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar p-4 lg:flex">
-          <Link to="/" className="flex items-center gap-2.5 px-2 py-2">
+          <Link to="/dashboard" className="flex items-center gap-2.5 px-2 py-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-leaf shadow-[0_4px_14px_-2px] shadow-leaf/40">
               <Leaf className="h-5 w-5 text-primary" />
             </div>
@@ -142,6 +150,14 @@ export function AppShell({ children }: AppShellProps) {
               <Settings className="h-4.5 w-4.5" />
               <span>Settings</span>
             </Link>
+
+            <button
+              onClick={handleLogout}
+              className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-destructive/10 hover:text-destructive"
+            >
+              <LogOut className="h-4.5 w-4.5" />
+              <span>Log out</span>
+            </button>
           </div>
         </aside>
 
