@@ -157,7 +157,7 @@ function DashboardPage() {
               </div>
 
               {/* Rings */}
-              <div className="flex items-center gap-6">
+              <div className="flex flex-wrap justify-center sm:justify-start gap-4 sm:gap-6">
                 <RingStat label="Calories" value={calPercent} suffix={`${calories} / ${calorieTarget}`} color="oklch(0.78 0.16 145)" />
                 <RingStat label="Protein" value={proteinPercent} suffix={`${protein} / ${proteinTarget} g`} color="oklch(0.82 0.16 70)" />
                 <RingStat label="Water" value={waterPercent} suffix={`${water} / ${waterTarget} L`} color="oklch(0.78 0.14 220)" />
