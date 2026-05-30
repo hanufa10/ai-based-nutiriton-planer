@@ -5,7 +5,7 @@ import { AppShell, PageHeader } from "@/components/app-shell";
 import { Card } from "@/components/ui-bits";
 import emailjs from "@emailjs/browser";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-
+import ReactMarkdown from "react-markdown";
 export const Route = createFileRoute("/coach")({
   component: CoachPage,
 });
@@ -84,9 +84,32 @@ export function CoachPage() {
     setMessages(updatedMessages);
     setInputValue("");
     setIsTyping(true);
+const lower = textToSend.toLowerCase();
 
+if (
+  lower.includes("nutritionist") ||
+  lower.includes("expert") ||
+  lower.includes("human nutritionist") ||
+  lower.includes("contact") ||
+  lower.includes("email")
+) {
+  setMessages((prev) => [
+    ...prev,
+    {
+      from: "coach",
+      text: `You can contact our nutrition specialist at **hanahailekiros27@gmail.com**.
+
+You may also click **"Talk to Nutritionist"** to send your question directly through the app.`
+    }
+  ]);
+
+  setIsTyping(false);
+  return;
+}
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
+      const model = genAI.getGenerativeModel({
+  model: "gemini-2.5-flash"
+});
       const result = await model.generateContent({
         contents: updatedMessages
           .filter((m) => m.from === "user" || m.from === "coach")
@@ -175,7 +198,7 @@ export function CoachPage() {
                 return (
                   <div key={idx} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
                     <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-xs font-medium leading-relaxed shadow-sm ${isUser ? "bg-primary text-primary-foreground rounded-br-none" : isNutritionist ? "bg-amber-100 text-amber-900 rounded-bl-none border border-amber-200" : "bg-leaf-soft text-primary rounded-bl-none"}`}>
-                      {m.text}
+                      <ReactMarkdown>{m.text}</ReactMarkdown>
                     </div>
                   </div>
                 );

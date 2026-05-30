@@ -8,6 +8,8 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
+import { createFileRoute } from '@tanstack/react-router'
+
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -19,7 +21,10 @@ import { Route as LibraryRouteImport } from './routes/library'
 import { Route as FeedbackRouteImport } from './routes/feedback'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CoachRouteImport } from './routes/coach'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+
+const AdminDashboardLazyRouteImport = createFileRoute('/admin/dashboard')()
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -71,14 +76,27 @@ const CoachRoute = CoachRouteImport.update({
   path: '/coach',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminDashboardLazyRoute = AdminDashboardLazyRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AdminRoute,
+} as any).lazy(() =>
+  import('./routes/admin.dashboard.lazy').then((d) => d.Route),
+)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/coach': typeof CoachRoute
   '/dashboard': typeof DashboardRoute
   '/feedback': typeof FeedbackRoute
@@ -89,9 +107,11 @@ export interface FileRoutesByFullPath {
   '/progress': typeof ProgressRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
+  '/admin/dashboard': typeof AdminDashboardLazyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/coach': typeof CoachRoute
   '/dashboard': typeof DashboardRoute
   '/feedback': typeof FeedbackRoute
@@ -102,10 +122,12 @@ export interface FileRoutesByTo {
   '/progress': typeof ProgressRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
+  '/admin/dashboard': typeof AdminDashboardLazyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/coach': typeof CoachRoute
   '/dashboard': typeof DashboardRoute
   '/feedback': typeof FeedbackRoute
@@ -116,11 +138,13 @@ export interface FileRoutesById {
   '/progress': typeof ProgressRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
+  '/admin/dashboard': typeof AdminDashboardLazyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/coach'
     | '/dashboard'
     | '/feedback'
@@ -131,9 +155,11 @@ export interface FileRouteTypes {
     | '/progress'
     | '/settings'
     | '/signup'
+    | '/admin/dashboard'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
     | '/coach'
     | '/dashboard'
     | '/feedback'
@@ -144,9 +170,11 @@ export interface FileRouteTypes {
     | '/progress'
     | '/settings'
     | '/signup'
+    | '/admin/dashboard'
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/coach'
     | '/dashboard'
     | '/feedback'
@@ -157,10 +185,12 @@ export interface FileRouteTypes {
     | '/progress'
     | '/settings'
     | '/signup'
+    | '/admin/dashboard'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
   CoachRoute: typeof CoachRoute
   DashboardRoute: typeof DashboardRoute
   FeedbackRoute: typeof FeedbackRoute
@@ -245,6 +275,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CoachRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -252,11 +289,29 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/dashboard': {
+      id: '/admin/dashboard'
+      path: '/dashboard'
+      fullPath: '/admin/dashboard'
+      preLoaderRoute: typeof AdminDashboardLazyRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
+interface AdminRouteChildren {
+  AdminDashboardLazyRoute: typeof AdminDashboardLazyRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminDashboardLazyRoute: AdminDashboardLazyRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
   CoachRoute: CoachRoute,
   DashboardRoute: DashboardRoute,
   FeedbackRoute: FeedbackRoute,

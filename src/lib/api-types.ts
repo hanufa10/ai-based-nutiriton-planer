@@ -106,3 +106,23 @@ export interface ProgressSummary {
     bmi: { date: string; value: number }[];
   };
 }
+
+export interface AdminMetricCard {
+  id: string;
+  label: string;
+  value: string | number;
+  variant: 'green' | 'purple' | 'orange' | 'pink';
+}
+
+export interface AdminMealSubmission {
+  id: string;
+  name: string;
+  calories: number;
+  category: 'Breakfast' | 'Lunch' | 'Dinner' | 'Snack';
+  status: 'Approved' | 'Pending';
+  macros: {
+    carbs: number;
+    protein: number;
+    fat: number;
+  };
+}
