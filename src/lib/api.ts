@@ -1,6 +1,6 @@
 const API_BASE =
   import.meta.env.DEV
-    ? "https://nutiplanner-api-2.onrender.com/user/login"
+    ? "https://nutiplanner-api-2.onrender.com"
     : "https://nutiplanner-api-2.onrender.com";
 
 export async function apiFetch(url: string, options: RequestInit = {}) {
