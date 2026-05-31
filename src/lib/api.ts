@@ -1,6 +1,6 @@
 const API_BASE =
   import.meta.env.DEV
-    ? "http://localhost:4001"
+    ? "https://nutiplanner-api-2.onrender.com/user/login"
     : "https://nutiplanner-api-2.onrender.com";
 
 export async function apiFetch(url: string, options: RequestInit = {}) {
@@ -16,8 +16,18 @@ export async function apiFetch(url: string, options: RequestInit = {}) {
   });
 
   if (!res.ok) {
-    throw new Error(await res.text());
+    throw new ApiError(await res.text(), res.status, await res.json().catch(() => null));
   }
 
   return res.json();
+}
+export class ApiError extends Error {
+  status: number;
+  body?: any;
+
+  constructor(message: string, status: number, body?: any) {
+    super(message);
+    this.status = status;
+    this.body = body;
+  }
 }

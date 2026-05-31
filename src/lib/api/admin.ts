@@ -1,56 +1,87 @@
-// Detect environment or fallback to production
-const API_BASE = import.meta.env.DEV 
-  ? 'http://localhost:4001' 
-  : 'https://nutiplanner-api-2.onrender.com';
+const API_URL = "https://nutiplanner-api-2.onrender.com";
 
-// Generic authed request helper mimicking your system architecture
-async function fetchAdmin<T>(path: string, options?: RequestInit): Promise<T> {
-  const token = localStorage.getItem('auth_token'); // Matches standard auth patterns
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-      ...options?.headers,
-    },
-  });
-  if (!res.ok) throw new Error(`Admin API Error: ${res.statusText}`);
-  return res.json();
+function getToken() {
+  return localStorage.getItem("auth_token");
 }
 
 export const adminApi = {
-  // GET /admin/reports
-  getReport: () => fetchAdmin<{
-    totalUsers: number;
-    totalFoods: number;
-    activePlansToday: number;
-    cosineSimilarityJobStatus: string;
-    lastCronRun: string;
-  }>('/admin/reports'),
+  async getUsers() {
+    const res = await fetch(`${API_URL}/admin/users`, {
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
+    });
 
-  // GET /admin/users
-  getUsers: () => fetchAdmin<Array<{ id: number; username: string; email: string; role: 'user' | 'admin' }>>('/admin/users'),
+    return res.json();
+  },
 
-  // PUT /admin/users/{userId}
-  updateUser: (userId: number, data: { username: string; email: string; role: string }) => 
-    fetchAdmin(`/admin/users/${userId}`, { method: 'PUT', body: JSON.stringify(data) }),
+  async deleteUser(userId: number) {
+    await fetch(`${API_URL}/admin/users/${userId}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
+    });
+  },
 
-  // DELETE /admin/users/{userId}
-  deleteUser: (userId: number) => fetchAdmin(`/admin/users/${userId}`, { method: 'DELETE' }),
+  async getReport() {
+    const res = await fetch(`${API_URL}/admin/reports`, {
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
+    });
 
-  // GET /admin/foods
-  getFoods: () => fetchAdmin<Array<{ id: number; foodName: string; foodCalories: number; foodProtein: number; carbs: number; fat: number; category: string; foodType: string }>>('/admin/foods'),
+    return res.json();
+  },
 
-  // POST /admin/foods
-  createFood: (food: { foodName: string; foodCalories: number; foodProtein: number; carbs: number; fat: number; category: string; foodType: string }) =>
-    fetchAdmin('/admin/foods', { method: 'POST', body: JSON.stringify(food) }),
+  async getFeedback() {
+    const res = await fetch(`${API_URL}/admin/feedback`, {
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
+    });
 
-  // DELETE /admin/foods/{id}
-  deleteFood: (id: number) => fetchAdmin(`/admin/foods/${id}`, { method: 'DELETE' }),
+    return res.json();
+  },
 
-  // GET /admin/feedback
-  getFeedback: (params?: { userId?: number; rating?: number }) => {
-    const query = params ? `?${new URLSearchParams(params as any).toString()}` : '';
-    return fetchAdmin<Array<{ id: number; userId: number; rating: number; comment: string; createdAt: string }>>(`/admin/feedback${query}`);
+  async deleteFeedback(id: number) {
+    await fetch(`${API_URL}/admin/feedback/${id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
+    });
+  },
+
+  async getFoods() {
+    const res = await fetch(`${API_URL}/admin/foods`, {
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
+    });
+
+    return res.json();
+  },
+
+  async createFood(food: any) {
+    const res = await fetch(`${API_URL}/admin/foods`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getToken()}`,
+      },
+      body: JSON.stringify(food),
+    });
+
+    return res.json();
+  },
+
+  async deleteFood(id: number) {
+    await fetch(`${API_URL}/admin/foods/${id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
+    });
   },
 };

@@ -23,6 +23,7 @@ function LoginPage() {
 
   // --- FORM SUBMISSION HANDLER ---
   const handleSubmit = async (e: React.FormEvent) => {
+    console.log("Login button clicked");
     e.preventDefault();
     setIsLoading(true);
     setErrorMessage(null);
@@ -42,7 +43,16 @@ function LoginPage() {
         }),
       });
 
-      const data = await response.json();
+     console.log("Email:", formData.email);
+console.log("Password:", formData.password);
+
+const data = await response.json();
+
+console.log("Status:", response.status);
+console.log("Response:", data);
+      console.log("Response status:", response.status);
+console.log("Response data:", data);
+      console.log("Login Response:", data); // Debug log for response
 
       if (!response.ok) {
         throw new Error(data.detail || data.message || "Authentication failed. Please check your credentials.");
@@ -53,19 +63,36 @@ function LoginPage() {
       localStorage.setItem("auth_token", data.token);
       localStorage.setItem("user_profile", JSON.stringify(data.user));
 
+// localStorage.clear();
       // Small delay so the user catches the success state before transition redirect
-      setTimeout(() => {
-        const searchParams = new URLSearchParams(window.location.search);
-        const callbackUrl = searchParams.get('callbackUrl');
+      // setTimeout(() => {
+      //   const searchParams = new URLSearchParams(window.location.search);
+      //   const callbackUrl = searchParams.get('callbackUrl');
         
-        if (callbackUrl) {
-          navigate({ to: callbackUrl });
-        } else {
-          // If no callback URL, determine if they need onboarding or dashboard.
-          // For now, default to dashboard. (User can change this logic if they prefer onboarding first).
-          navigate({ to: "/dashboard" });
-        }
-      }, 800);
+      //   if (callbackUrl) {
+      //     navigate({ to: callbackUrl });
+      //   } else {
+      //     // If no callback URL, determine if they need onboarding or dashboard.
+      //     // For now, default to dashboard. (User can change this logic if they prefer onboarding first).
+      //     navigate({ to: "/dashboard" });
+      //   }
+      // }, 800);
+   
+      setTimeout(() => {
+  const searchParams = new URLSearchParams(window.location.search);
+  const callbackUrl = searchParams.get("callbackUrl");
+
+  if (callbackUrl) {
+    navigate({ to: callbackUrl });
+  } else {
+    if (data.user.role === "admin") {
+      navigate({ to: "/admin/dashboard" });
+    } else {
+      navigate({ to: "/dashboard" });
+    }
+  }
+}, 800);
+
 
     } catch (err: any) {
       setErrorMessage(err.message || "An unexpected network layout error occurred. Verify your backend server state.");
