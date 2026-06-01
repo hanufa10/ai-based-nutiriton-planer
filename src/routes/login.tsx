@@ -36,11 +36,13 @@ function LoginPage() {
         const searchParams = new URLSearchParams(window.location.search);
         const callbackUrl = searchParams.get("callbackUrl");
 
-        if (callbackUrl) {
-          navigate({ to: callbackUrl });
-        } else {
-          navigate({ to: "/dashboard" });
-        }
+      if (callbackUrl) {
+  navigate({ to: callbackUrl });
+} else if (data.user.role === "admin") {
+  navigate({ to: "/admin/dashboard" });
+} else {
+  navigate({ to: "/dashboard" });
+}
       }, 800);
     } catch (err: unknown) {
       if (err instanceof ApiError) {
