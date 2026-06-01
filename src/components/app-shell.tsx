@@ -69,34 +69,26 @@ export function AppShell({ children }: AppShellProps) {
   };
   
   // 1. Manage user state directly inside the shell to ensure persistent hydration
-  const [userData, setUserData] = useState<UserProfile | null>(null);
+ const [userData, setUserData] = useState<UserProfile | null>(null);
 const [weeklyInsight, setWeeklyInsight] = useState("");
 
- useEffect(() => {
+useEffect(() => {
   try {
-    const storedProfile = localStorage.getItem("user_profile");
+    const storedProfile = localStorage.getItem(USER_PROFILE_KEY);
 
-  useEffect(() => {
-    try {
-      const storedProfile = localStorage.getItem(USER_PROFILE_KEY);
-      if (storedProfile) {
-        const parsed = JSON.parse(storedProfile);
-        setUserData(parsed);
-      }
-    } catch (error) {
-      console.error("Failed to parse user profile from storage:", error);
+    if (storedProfile) {
+      const parsed = JSON.parse(storedProfile);
+      setUserData(parsed);
     }
 
     const randomInsight =
       insights[Math.floor(Math.random() * insights.length)];
 
     setWeeklyInsight(randomInsight);
-
   } catch (error) {
     console.error("Failed to parse user profile from storage:", error);
   }
 }, []);
-
   // 2. Fallback normalization strategy to capture backend key discrepancies gracefully
   const rawDisplayName = 
     userData?.name || 

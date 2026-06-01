@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { Sparkles, Dumbbell, Target, Scale, Check, Loader2 } from "lucide-react";
-import { apiFetch, AUTH_TOKEN_KEY, USER_PROFILE_KEY } from "@/lib/api";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({
@@ -46,7 +45,7 @@ function OnboardingPage() {
   useEffect(() => {
     try {
       // 1. Acquire authorization token from storage matrix
-      const token = localStorage.getItem(AUTH_TOKEN_KEY);
+      const token = localStorage.getItem("auth_token");
       
       // Route Protection Guardrail: If no token exists, bounce back to authenticate
       if (!token) {
@@ -60,7 +59,7 @@ function OnboardingPage() {
       setAuthToken(token);
 
       // 2. Load user session details
-      const storedSession = localStorage.getItem(USER_PROFILE_KEY);
+      const storedSession = localStorage.getItem("user_profile");
       if (storedSession) {
         const parsed: StoredUserSession = JSON.parse(storedSession);
         setCurrentUserId(parsed.userId);
@@ -124,13 +123,25 @@ function OnboardingPage() {
     };
 
     try {
-      const jsonResponse = await apiFetch<{ data?: StoredUserSession & { userInfo?: unknown } }>(
-        `/user/${targetUserId}`,
-        {
-          method: "PUT",
-          body: JSON.stringify(payload),
+      const response = await fetch(`https://nutiplanner-api-2.onrender.com/user/${targetUserId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          // INJECTED AUTHORIZATION VALUE TO PREVENT 401 MUTATIONS CRASH
+          "Authorization": `Bearer ${authToken}`
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("Your login session expired or is invalid. Please log in again.");
         }
-      );
+        throw new Error(`Server returned error status code: ${response.status}`);
+      }
+
+      const jsonResponse = await response.json();
       
       // Sync mutations smoothly back down into client layer layout context state cache
       if (jsonResponse?.data) {
@@ -142,7 +153,7 @@ function OnboardingPage() {
           createdAt: jsonResponse.data.createdAt,
           userInfo: jsonResponse.data.userInfo
         };
-        localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(freshSessionData));
+        localStorage.setItem("user_profile", JSON.stringify(freshSessionData));
       }
 
       // Route smoothly into dashboard view
@@ -312,69 +323,38 @@ function OnboardingPage() {
             </div>
           )}
 
-          {/* STEP 3: Dietary Architecture */}
-          {step === 3 && (
-            <div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-leaf-soft text-primary">
-                <Dumbbell className="h-5 w-5 text-leaf" />
-              </div>
-              <h2 className="mt-4 font-display text-2xl font-semibold sm:text-3xl">Dietary Profiles & Allergies</h2>
-              <p className="mt-1 text-sm text-muted-foreground">The AI engine uses this to filter suggested menus dynamically.</p>
+        {/* STEP 3: FINAL BUILD DASHBOARD ONLY */}
+{step === 3 && (
+  <div className="flex flex-col items-center justify-center text-center py-10">
 
-              <div className="mt-6 grid grid-cols-2 gap-3">
-                {[
-                  { id: "keto", label: "Ketogenic" },
-                  { id: "vegan", label: "Plant-Based / Vegan" },
-                  { id: "vegetarian", label: "Vegetarian" },
-                  { id: "gluten-free", label: "Gluten Free" },
-                  { id: "dairy-free", label: "Dairy Free" },
-                  { id: "pescatarian", label: "Pescatarian" }
-                ].map((tag) => {
-                  const active = profile.restrictions.includes(tag.id);
-                  return (
-                    <button
-                      key={tag.id}
-                      type="button"
-                      onClick={() => toggleRestriction(tag.id)}
-                      className={`p-3 rounded-xl border text-sm font-medium transition-all text-center ${
-                        active 
-                          ? "border-leaf bg-leaf text-primary" 
-                          : "border-border bg-background hover:bg-muted"
-                      }`}
-                    >
-                      {tag.label}
-                    </button>
-                  );
-                })}
-              </div>
+    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-leaf-soft text-primary">
+      <Dumbbell className="h-6 w-6 text-leaf" />
+    </div>
 
-              {/* Engine Validation Notification Box */}
-              <div className="mt-6 rounded-2xl bg-[var(--gradient-hero)] p-4 text-primary-foreground relative overflow-hidden">
-                <div className="relative flex items-start gap-3">
-                  <Sparkles className="h-5 w-5 text-leaf shrink-0 mt-0.5" />
-                  <div>
-                    <div className="text-xs font-semibold uppercase tracking-wider">AI Calculation Preview</div>
-                    <p className="text-xs text-primary-foreground/80 mt-1 leading-relaxed">
-                      Based on parameters, your engine seed is evaluating roughly **1,950 — 2,050 kcal/day** targeted directly toward performance split targets.
-                    </p>
-                  </div>
-                </div>
-              </div>
+    <h2 className="mt-6 font-display text-2xl font-semibold sm:text-3xl">
+      Ready to build your dashboard
+    </h2>
 
-              <div className="mt-8 flex justify-between">
-                <button type="button" disabled={isSubmitting} onClick={prevStep} className="rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-medium hover:bg-muted disabled:opacity-50">Back</button>
-                <button 
-                  type="button"
-                  disabled={isSubmitting || !authToken} 
-                  onClick={handleFinish} 
-                  className="rounded-xl bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 flex items-center gap-2 disabled:opacity-50"
-                >
-                  {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {isSubmitting ? "Syncing Config..." : "Build My Dashboard"}
-                </button>
-              </div>
-            </div>
-          )}
+    <p className="mt-2 text-sm text-muted-foreground">
+      Your profile setup is complete. Click below to generate your personalized plan.
+    </p>
+
+    {/* ONLY BUTTON */}
+    <div className="mt-8">
+      <button
+        type="button"
+        disabled={isSubmitting || !authToken}
+        onClick={handleFinish}
+        className="rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground hover:opacity-90 flex items-center gap-2 disabled:opacity-50"
+      >
+        {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+        {isSubmitting ? "Building..." : "Build My Dashboard"}
+      </button>
+    </div>
+
+  </div>
+)}
+
         </div>
       </div>
     </div>
