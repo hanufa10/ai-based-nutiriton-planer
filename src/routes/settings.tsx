@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+// import { createFileRoute } from "@tanstack/react-router";
 import { User, Shield, Check, Loader2, AlertCircle } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { Card } from "@/components/ui-bits";
-
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { API_BASE, AUTH_TOKEN_KEY, USER_PROFILE_KEY } from "@/lib/api";
 
 const API_BASE_URL = `${API_BASE}/user`;
