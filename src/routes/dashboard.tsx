@@ -14,6 +14,7 @@ import {
   TrendingUp,
   Loader2,
 } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { Ring } from "@/components/ui-bits";
 import { ApiError } from "@/lib/api";
@@ -25,7 +26,9 @@ import { toDateKey } from "@/lib/dates";
 import { MEAL_TYPE_TO_SLOT, getItemsForSlot, type SlotLabel } from "@/lib/mealPlanDisplay";
 import { onMealLogUpdated } from "@/lib/mealLogEvents";
 
+
 export const Route = createFileRoute("/dashboard")({
+
   head: () => ({
     meta: [
       { title: "Dashboard — NutriSmart" },
@@ -153,16 +156,47 @@ function DashboardPage() {
     }
   }, [todayKey]);
 
+  // useEffect(() => {
+  //   try {
+  //     const storedProfile = localStorage.getItem("user_profile");
+  //     if (storedProfile) setUser(JSON.parse(storedProfile));
+  //   } catch (e) {
+  //     console.error("Failed to parse user profile:", e);
+  //   }
+  //   loadDashboard();
+  // }, [loadDashboard]);
+   const navigate = useNavigate();
+
   useEffect(() => {
+    const token = localStorage.getItem("auth_token");
+
+    if (!token) {
+      navigate({ to: "/login", replace: true });
+      return;
+    }
+
     try {
       const storedProfile = localStorage.getItem("user_profile");
       if (storedProfile) setUser(JSON.parse(storedProfile));
     } catch (e) {
       console.error("Failed to parse user profile:", e);
     }
-    loadDashboard();
-  }, [loadDashboard]);
 
+    loadDashboard();
+  }, [navigate, loadDashboard]);
+  useEffect(() => {
+  const token = localStorage.getItem("auth_token");
+  if (!token) return;
+
+  try {
+    const storedProfile = localStorage.getItem("user_profile");
+    if (storedProfile) setUser(JSON.parse(storedProfile));
+  } catch (e) {
+    console.error("Failed to parse user profile:", e);
+  }
+
+  loadDashboard();
+}, [loadDashboard]);
   useEffect(() => onMealLogUpdated(() => loadDashboard()), [loadDashboard]);
 
   const plannedMeals = useMemo(() => {

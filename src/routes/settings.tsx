@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { User, Shield, Check, Loader2, AlertCircle } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { Card } from "@/components/ui-bits";
-
+import { useNavigate } from "@tanstack/react-router";
 const API_BASE_URL = "https://nutiplanner-api-2.onrender.com/user";
 
 // --- AUTHENTICATION HOOK BRIDGE (ALIGNED WITH LOGIN PAGE) ---
@@ -41,7 +41,18 @@ const navigationSections = [
   { id: "metrics", label: "Biometrics & Goals", icon: Shield },
 ];
 
-function SettingsPage() {
+function SettingsPage() {  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("user_profile");
+
+    navigate({
+      to: "/login",
+      replace: true,
+    });
+  };
+
   const { userId, token, isAuthenticated } = useAuth();
   
   const [activeSection, setActiveSection] = useState("account");
@@ -137,7 +148,7 @@ function SettingsPage() {
   const handleSave = async () => {
     if (!userId) return;
     setLoading(true);
-    
+    console.log("Sending:", accountForm);
     try {
       if (activeSection === "account") {
         // Account Details Update Path
@@ -349,7 +360,15 @@ function SettingsPage() {
             )}
 
             <div className="flex justify-end gap-2 pt-2">
-              <button 
+             
+              <button
+    type="button"
+    onClick={handleLogout}
+    className="rounded-xl bg-red-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-red-700"
+  >
+    Logout
+  </button>
+             <button 
                 type="button" 
                 className="rounded-xl border border-border px-4 py-2.5 text-xs font-semibold hover:bg-muted transition-colors"
               >
