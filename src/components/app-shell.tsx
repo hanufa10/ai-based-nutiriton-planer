@@ -32,7 +32,7 @@ type NavItem = {
 
 const nav: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { to: "/planner", label: "Meal planner", icon: CalendarDays, badge: "3" },
+  { to: "/planner", label: "Meal planner", icon: CalendarDays},
   { to: "/library", label: "Food library", icon: Apple },
   { to: "/progress", label: "Progress", icon: Activity },
   { to: "/coach", label: "AI coach", icon: Sparkles },
@@ -50,6 +50,14 @@ interface UserProfile {
   dayOfPlan?: number;
 }
 
+const insights = [
+  "You hit your protein goal 5 of 7 days. Try one extra serving on rest days.",
+  "Stay hydrated today. Water supports energy and digestion.",
+  "A balanced breakfast can help you stay full longer.",
+  "Small healthy choices every day lead to big results.",
+  "Try adding one extra serving of vegetables today.",
+  "Consistency matters more than perfection.",
+];
 export function AppShell({ children }: AppShellProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
@@ -62,18 +70,26 @@ export function AppShell({ children }: AppShellProps) {
   
   // 1. Manage user state directly inside the shell to ensure persistent hydration
   const [userData, setUserData] = useState<UserProfile | null>(null);
+const [weeklyInsight, setWeeklyInsight] = useState("");
 
-  useEffect(() => {
-    try {
-      const storedProfile = localStorage.getItem("user_profile");
-      if (storedProfile) {
-        const parsed = JSON.parse(storedProfile);
-        setUserData(parsed);
-      }
-    } catch (error) {
-      console.error("Failed to parse user profile from storage:", error);
+ useEffect(() => {
+  try {
+    const storedProfile = localStorage.getItem("user_profile");
+
+    if (storedProfile) {
+      const parsed = JSON.parse(storedProfile);
+      setUserData(parsed);
     }
-  }, []);
+
+    const randomInsight =
+      insights[Math.floor(Math.random() * insights.length)];
+
+    setWeeklyInsight(randomInsight);
+
+  } catch (error) {
+    console.error("Failed to parse user profile from storage:", error);
+  }
+}, []);
 
   // 2. Fallback normalization strategy to capture backend key discrepancies gracefully
   const rawDisplayName = 
@@ -161,9 +177,9 @@ export function AppShell({ children }: AppShellProps) {
               <Sparkles className="h-4 w-4 text-leaf" />
               <span className="text-sm font-semibold">Weekly insight</span>
             </div>
-            <p className="mt-2 text-xs leading-relaxed text-sidebar-foreground/70">
-              You hit your protein goal 5 of 7 days. Try one extra serving on rest days.
-            </p>
+          <p className="mt-2 text-xs leading-relaxed text-sidebar-foreground/70">
+  {weeklyInsight}
+</p>
           </div>
           
           <Link
