@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouterState, useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
+import { getAuthToken } from "@/lib/api";
 
 // Routes that do NOT require authentication
 const PUBLIC_ROUTES = [
@@ -29,7 +30,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthOnly = AUTH_ONLY_ROUTES.includes(currentPath);
 
   useEffect(() => {
-    const token = localStorage.getItem("auth_token");
+    const token = getAuthToken();
 
     if (token && isAuthOnly) {
       // Logged-in user trying to visit /login or /signup → send to dashboard

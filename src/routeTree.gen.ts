@@ -20,11 +20,9 @@ import { Route as FeedbackRouteImport } from './routes/feedback'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CoachRouteImport } from './routes/coach'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminReportsRouteImport } from './routes/admin/reports'
 import { Route as AdminFoodsRouteImport } from './routes/admin/foods'
-import { Route as AdminFeedbackRouteImport } from './routes/admin/feedback'
 import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
 
 const SignupRoute = SignupRouteImport.update({
@@ -82,11 +80,6 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminIndexRoute = AdminIndexRouteImport.update({
-  id: '/admin/',
-  path: '/admin/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/admin/users',
   path: '/admin/users',
@@ -100,11 +93,6 @@ const AdminReportsRoute = AdminReportsRouteImport.update({
 const AdminFoodsRoute = AdminFoodsRouteImport.update({
   id: '/admin/foods',
   path: '/admin/foods',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminFeedbackRoute = AdminFeedbackRouteImport.update({
-  id: '/admin/feedback',
-  path: '/admin/feedback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminDashboardRoute = AdminDashboardRouteImport.update({
@@ -128,11 +116,9 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/admin/dashboard': typeof AdminDashboardRoute
-  '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/foods': typeof AdminFoodsRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/users': typeof AdminUsersRoute
-  '/admin/': typeof AdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -147,11 +133,9 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/admin/dashboard': typeof AdminDashboardRoute
-  '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/foods': typeof AdminFoodsRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/users': typeof AdminUsersRoute
-  '/admin': typeof AdminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -167,11 +151,9 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/admin/dashboard': typeof AdminDashboardRoute
-  '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/foods': typeof AdminFoodsRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/users': typeof AdminUsersRoute
-  '/admin/': typeof AdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -188,11 +170,9 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/admin/dashboard'
-    | '/admin/feedback'
     | '/admin/foods'
     | '/admin/reports'
     | '/admin/users'
-    | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -207,11 +187,9 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/admin/dashboard'
-    | '/admin/feedback'
     | '/admin/foods'
     | '/admin/reports'
     | '/admin/users'
-    | '/admin'
   id:
     | '__root__'
     | '/'
@@ -226,11 +204,9 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/admin/dashboard'
-    | '/admin/feedback'
     | '/admin/foods'
     | '/admin/reports'
     | '/admin/users'
-    | '/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -246,11 +222,9 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SignupRoute: typeof SignupRoute
   AdminDashboardRoute: typeof AdminDashboardRoute
-  AdminFeedbackRoute: typeof AdminFeedbackRoute
   AdminFoodsRoute: typeof AdminFoodsRoute
   AdminReportsRoute: typeof AdminReportsRoute
   AdminUsersRoute: typeof AdminUsersRoute
-  AdminIndexRoute: typeof AdminIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -332,13 +306,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/': {
-      id: '/admin/'
-      path: '/admin'
-      fullPath: '/admin/'
-      preLoaderRoute: typeof AdminIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/admin/users': {
       id: '/admin/users'
       path: '/admin/users'
@@ -358,13 +325,6 @@ declare module '@tanstack/react-router' {
       path: '/admin/foods'
       fullPath: '/admin/foods'
       preLoaderRoute: typeof AdminFoodsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/feedback': {
-      id: '/admin/feedback'
-      path: '/admin/feedback'
-      fullPath: '/admin/feedback'
-      preLoaderRoute: typeof AdminFeedbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/dashboard': {
@@ -390,11 +350,9 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SignupRoute: SignupRoute,
   AdminDashboardRoute: AdminDashboardRoute,
-  AdminFeedbackRoute: AdminFeedbackRoute,
   AdminFoodsRoute: AdminFoodsRoute,
   AdminReportsRoute: AdminReportsRoute,
   AdminUsersRoute: AdminUsersRoute,
-  AdminIndexRoute: AdminIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

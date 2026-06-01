@@ -2,7 +2,9 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { TrendingUp, TrendingDown, Award, Flame, Loader2 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
+import { WeekProgressChart, type WeekChartDay } from "@/components/week-progress-chart";
 import { Card, Ring } from "@/components/ui-bits";
+import { getProgress } from "@/lib/api/progress";
 import { ApiError } from "@/lib/api";
 import { getNutritionTargets } from "@/lib/api/mealPlans";
 import { getProgressSummary } from "@/lib/api/progress";
@@ -20,11 +22,7 @@ export const Route = createFileRoute("/progress")({
   component: ProgressPage,
 });
 
-interface DayChart {
-  d: string;
-  dateKey: string;
-  v: number;
-  p: number;
+interface DayChart extends WeekChartDay {
   met: boolean;
 }
 
@@ -42,7 +40,10 @@ function ProgressPage() {
       const dates = getWeekDates(weekStart);
       const dateKeys = dates.map(toDateKey);
 
-      const [targets, summaries] = await Promise.all([
+      const weekFrom = dateKeys[0];
+      const weekTo = dateKeys[dateKeys.length - 1];
+
+      const [targets, summaries, weightEntries] = await Promise.all([
         getNutritionTargets().catch((err) => {
           if (err instanceof ApiError && err.status === 404) return null;
           throw err;
@@ -52,9 +53,16 @@ function ProgressPage() {
             getProgressSummary(key).catch(() => null as ProgressSummary | null),
           ),
         ),
+        getProgress({ from: weekFrom, to: weekTo }).catch(() => []),
       ]);
 
       if (targets) setProteinGoal(Math.round(targets.proteinGoal));
+
+      const weightByDate = new Map<string, number | null>();
+      for (const entry of weightEntries) {
+        const key = entry.date.slice(0, 10);
+        if (entry.weight != null) weightByDate.set(key, entry.weight);
+      }
 
       const chart: DayChart[] = dates.map((date, i) => {
         const summary = summaries[i];
@@ -66,10 +74,12 @@ function ProgressPage() {
           (summary.totalMeals > 0 ||
             (summary.adherencePct != null && summary.adherencePct >= 70));
         return {
-          d: formatDayShort(date).slice(0, 3),
+          label: formatDayShort(date).slice(0, 3),
           dateKey: dateKeys[i],
-          v: calories,
-          p: protein,
+          calories,
+          protein,
+          weight: weightByDate.get(dateKeys[i]) ?? null,
+          calorieGoal: goal > 0 ? Math.round(goal) : undefined,
           met: goal > 0 ? calories > 0 && calories <= goal * 1.1 : met,
         };
       });
@@ -94,18 +104,16 @@ function ProgressPage() {
 
   useEffect(() => onMealLogUpdated(() => loadProgress()), [loadProgress]);
 
-  const max = useMemo(() => Math.max(2200, ...weekData.map((w) => w.v), 1), [weekData]);
-
   const avgCalories = useMemo(() => {
-    const withData = weekData.filter((w) => w.v > 0);
+    const withData = weekData.filter((w) => w.calories > 0);
     if (!withData.length) return null;
-    return Math.round(withData.reduce((s, w) => s + w.v, 0) / withData.length);
+    return Math.round(withData.reduce((s, w) => s + w.calories, 0) / withData.length);
   }, [weekData]);
 
   const avgProtein = useMemo(() => {
-    const withData = weekData.filter((w) => w.p > 0);
+    const withData = weekData.filter((w) => w.protein > 0);
     if (!withData.length) return null;
-    return Math.round(withData.reduce((s, w) => s + w.p, 0) / withData.length);
+    return Math.round(withData.reduce((s, w) => s + w.protein, 0) / withData.length);
   }, [weekData]);
 
   const completionMetrics = useMemo(() => {
@@ -118,7 +126,7 @@ function ProgressPage() {
   const loggingStreak = useMemo(() => {
     let streak = 0;
     for (let i = weekData.length - 1; i >= 0; i--) {
-      if (weekData[i].v > 0) streak++;
+      if (weekData[i].calories > 0) streak++;
       else break;
     }
     return streak;
@@ -181,52 +189,12 @@ function ProgressPage() {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <Card>
-            <div className="flex items-end justify-between">
-              <div>
-                <h3 className="font-display text-xl font-semibold">Calories vs. protein</h3>
-                <p className="text-sm text-muted-foreground">Bars: kcal · Dots: protein (g)</p>
-              </div>
-              <div className="flex items-center gap-3 text-xs">
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-sm bg-leaf" /> Calories
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-full bg-citrus" /> Protein
-                </span>
-              </div>
-            </div>
-
-            {weekData.every((w) => w.v === 0) ? (
-              <p className="mt-12 text-center text-sm text-muted-foreground py-16">
-                No meal logs this week yet. Log meals from the planner or dashboard.
-              </p>
-            ) : (
-              <div className="mt-8 flex h-64 items-end gap-3">
-                {weekData.map((w) => {
-                  const h = (w.v / max) * 100;
-                  const ph = (w.p / Math.max(proteinGoal, 140)) * 100;
-                  return (
-                    <div key={w.dateKey} className="group relative flex flex-1 flex-col items-center">
-                      <div className="relative flex h-full w-full items-end">
-                        <div
-                          className="w-full rounded-t-lg bg-gradient-to-t from-leaf to-leaf/60 transition-all group-hover:from-leaf"
-                          style={{ height: `${Math.max(h, w.v > 0 ? 4 : 0)}%` }}
-                        />
-                        {w.p > 0 && (
-                          <div
-                            className="absolute left-1/2 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-card bg-citrus shadow"
-                            style={{ bottom: `${ph}%` }}
-                          />
-                        )}
-                      </div>
-                      <div className="mt-2 text-[11px] font-medium text-muted-foreground">{w.d}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </Card>
+          <WeekProgressChart
+            days={weekData}
+            proteinGoal={proteinGoal}
+            title="Calories vs. protein"
+            description="Bars: kcal from meal logs · dots: protein · markers: weight from /progress"
+          />
 
           <Card>
             <h3 className="font-display text-xl font-semibold">Goal completion</h3>
@@ -254,10 +222,10 @@ function ProgressPage() {
               {weekData.map((w) => (
                 <div key={w.dateKey} className="text-center">
                   <div
-                    className={`mx-auto h-8 w-full rounded-md ${w.met ? "bg-leaf" : w.v > 0 ? "bg-citrus/60" : "bg-muted"}`}
-                    title={w.v > 0 ? `${w.v} kcal` : "No logs"}
+                    className={`mx-auto h-8 w-full rounded-md ${w.met ? "bg-leaf" : w.calories > 0 ? "bg-citrus/60" : "bg-muted"}`}
+                    title={w.calories > 0 ? `${w.calories} kcal` : "No logs"}
                   />
-                  <div className="mt-1 text-[10px] text-muted-foreground">{w.d}</div>
+                  <div className="mt-1 text-[10px] text-muted-foreground">{w.label}</div>
                 </div>
               ))}
             </div>
@@ -278,19 +246,19 @@ function ProgressPage() {
             {[
               {
                 t: "Days logged",
-                s: `${weekData.filter((w) => w.v > 0).length} of 7`,
+                s: `${weekData.filter((w) => w.calories > 0).length} of 7`,
                 c: "bg-leaf-soft",
               },
               {
                 t: "Protein days",
-                s: `${weekData.filter((w) => w.p >= proteinGoal * 0.8).length} near goal`,
+                s: `${weekData.filter((w) => w.protein >= proteinGoal * 0.8).length} near goal`,
                 c: "bg-lavender/25",
               },
               {
                 t: "Peak day",
                 s:
                   weekData.length > 0
-                    ? `${Math.max(...weekData.map((w) => w.v)).toLocaleString()} kcal`
+                    ? `${Math.max(...weekData.map((w) => w.calories)).toLocaleString()} kcal`
                     : "—",
                 c: "bg-leaf/20",
               },
@@ -298,7 +266,7 @@ function ProgressPage() {
                 t: "Best protein",
                 s:
                   weekData.length > 0
-                    ? `${Math.max(...weekData.map((w) => w.p))}g`
+                    ? `${Math.max(...weekData.map((w) => w.protein))}g`
                     : "—",
                 c: "bg-citrus/25",
               },

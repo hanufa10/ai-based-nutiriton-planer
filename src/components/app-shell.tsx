@@ -1,5 +1,6 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
+import { clearAuth, USER_PROFILE_KEY } from "@/lib/api";
 import {
   LayoutDashboard,
   CalendarDays,
@@ -63,8 +64,7 @@ export function AppShell({ children }: AppShellProps) {
   const navigate = useNavigate();
   
   const handleLogout = () => {
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("user_profile");
+    clearAuth();
     navigate({ to: "/login", replace: true });
   };
   
@@ -76,9 +76,15 @@ const [weeklyInsight, setWeeklyInsight] = useState("");
   try {
     const storedProfile = localStorage.getItem("user_profile");
 
-    if (storedProfile) {
-      const parsed = JSON.parse(storedProfile);
-      setUserData(parsed);
+  useEffect(() => {
+    try {
+      const storedProfile = localStorage.getItem(USER_PROFILE_KEY);
+      if (storedProfile) {
+        const parsed = JSON.parse(storedProfile);
+        setUserData(parsed);
+      }
+    } catch (error) {
+      console.error("Failed to parse user profile from storage:", error);
     }
 
     const randomInsight =

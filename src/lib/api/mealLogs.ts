@@ -6,6 +6,11 @@ export function getMealLogs(date?: string) {
   return apiFetch<MealLog[]>(`/meal-logs${query}`);
 }
 
+export function getMealLogsInRange(from: string, to: string) {
+  const params = new URLSearchParams({ from, to });
+  return apiFetch<MealLog[]>(`/meal-logs?${params.toString()}`);
+}
+
 export function createMealLog(payload: {
   logDate: string;
   mealType: MealType;

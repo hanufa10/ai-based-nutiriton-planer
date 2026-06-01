@@ -1,87 +1,46 @@
-const API_URL = "https://nutiplanner-api-2.onrender.com";
-
-function getToken() {
-  return localStorage.getItem("auth_token");
-}
+import { apiFetch } from "../api";
 
 export const adminApi = {
-  async getUsers() {
-    const res = await fetch(`${API_URL}/admin/users`, {
-      headers: {
-        Authorization: `Bearer ${getToken()}`,
-      },
-    });
+  getReport: () =>
+    apiFetch<{
+      totalUsers: number;
+      totalFoods: number;
+      totalFeedback: number;
+    }>("/admin/reports"),
 
-    return res.json();
-  },
+  getUsers: () =>
+    apiFetch<Array<{ id: number; username: string; email: string; role: "user" | "admin" }>>(
+      "/admin/users"
+    ),
 
-  async deleteUser(userId: number) {
-    await fetch(`${API_URL}/admin/users/${userId}`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${getToken()}`,
-      },
-    });
-  },
+  updateUser: (userId: number, data: Record<string, unknown>) =>
+    apiFetch(`/admin/users/${userId}`, { method: "PUT", body: JSON.stringify(data) }),
 
-  async getReport() {
-    const res = await fetch(`${API_URL}/admin/reports`, {
-      headers: {
-        Authorization: `Bearer ${getToken()}`,
-      },
-    });
+  deleteUser: (userId: number) => apiFetch(`/admin/users/${userId}`, { method: "DELETE" }),
 
-    return res.json();
-  },
+  getFoods: () =>
+    apiFetch<
+      Array<{
+        id: number;
+        foodName: string;
+        foodCalories: number;
+        foodProtein: number;
+        carbs: number;
+        fat: number;
+        category: string;
+        foodType: string;
+      }>
+    >("/admin/foods"),
 
-  async getFeedback() {
-    const res = await fetch(`${API_URL}/admin/feedback`, {
-      headers: {
-        Authorization: `Bearer ${getToken()}`,
-      },
-    });
+  createFood: (food: Record<string, unknown>) =>
+    apiFetch("/admin/foods", { method: "POST", body: JSON.stringify(food) }),
 
-    return res.json();
-  },
+  deleteFood: (id: number) => apiFetch(`/admin/foods/${id}`, { method: "DELETE" }),
 
-  async deleteFeedback(id: number) {
-    await fetch(`${API_URL}/admin/feedback/${id}`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${getToken()}`,
-      },
-    });
-  },
-
-  async getFoods() {
-    const res = await fetch(`${API_URL}/admin/foods`, {
-      headers: {
-        Authorization: `Bearer ${getToken()}`,
-      },
-    });
-
-    return res.json();
-  },
-
-  async createFood(food: any) {
-    const res = await fetch(`${API_URL}/admin/foods`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${getToken()}`,
-      },
-      body: JSON.stringify(food),
-    });
-
-    return res.json();
-  },
-
-  async deleteFood(id: number) {
-    await fetch(`${API_URL}/admin/foods/${id}`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${getToken()}`,
-      },
-    });
+  getFeedback: (userId?: number) => {
+    const query = userId ? `?userId=${userId}` : "";
+    return apiFetch<
+      Array<{ id: number; userId: number; rating: number; comment: string; createdAt: string }>
+    >(`/admin/feedback${query}`);
   },
 };

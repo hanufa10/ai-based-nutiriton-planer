@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { Sparkles, Dumbbell, Target, Scale, Check, Loader2 } from "lucide-react";
+import { apiFetch, AUTH_TOKEN_KEY, USER_PROFILE_KEY } from "@/lib/api";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({
@@ -45,7 +46,7 @@ function OnboardingPage() {
   useEffect(() => {
     try {
       // 1. Acquire authorization token from storage matrix
-      const token = localStorage.getItem("auth_token");
+      const token = localStorage.getItem(AUTH_TOKEN_KEY);
       
       // Route Protection Guardrail: If no token exists, bounce back to authenticate
       if (!token) {
@@ -59,7 +60,7 @@ function OnboardingPage() {
       setAuthToken(token);
 
       // 2. Load user session details
-      const storedSession = localStorage.getItem("user_profile");
+      const storedSession = localStorage.getItem(USER_PROFILE_KEY);
       if (storedSession) {
         const parsed: StoredUserSession = JSON.parse(storedSession);
         setCurrentUserId(parsed.userId);
@@ -123,25 +124,13 @@ function OnboardingPage() {
     };
 
     try {
-      const response = await fetch(`https://nutiplanner-api-2.onrender.com/user/${targetUserId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-          // INJECTED AUTHORIZATION VALUE TO PREVENT 401 MUTATIONS CRASH
-          "Authorization": `Bearer ${authToken}`
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error("Your login session expired or is invalid. Please log in again.");
+      const jsonResponse = await apiFetch<{ data?: StoredUserSession & { userInfo?: unknown } }>(
+        `/user/${targetUserId}`,
+        {
+          method: "PUT",
+          body: JSON.stringify(payload),
         }
-        throw new Error(`Server returned error status code: ${response.status}`);
-      }
-
-      const jsonResponse = await response.json();
+      );
       
       // Sync mutations smoothly back down into client layer layout context state cache
       if (jsonResponse?.data) {
@@ -153,7 +142,7 @@ function OnboardingPage() {
           createdAt: jsonResponse.data.createdAt,
           userInfo: jsonResponse.data.userInfo
         };
-        localStorage.setItem("user_profile", JSON.stringify(freshSessionData));
+        localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(freshSessionData));
       }
 
       // Route smoothly into dashboard view

@@ -3,13 +3,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import { User, Shield, Check, Loader2, AlertCircle } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { Card } from "@/components/ui-bits";
-import { useNavigate } from "@tanstack/react-router";
-const API_BASE_URL = "https://nutiplanner-api-2.onrender.com/user";
+
+import { API_BASE, AUTH_TOKEN_KEY, USER_PROFILE_KEY } from "@/lib/api";
+
+const API_BASE_URL = `${API_BASE}/user`;
 
 // --- AUTHENTICATION HOOK BRIDGE (ALIGNED WITH LOGIN PAGE) ---
 function useAuth() {
-  const token = localStorage.getItem("auth_token");
-  const userProfileStr = localStorage.getItem("user_profile");
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  const userProfileStr = localStorage.getItem(USER_PROFILE_KEY);
   
   let userId: string | null = null;
   if (userProfileStr) {
