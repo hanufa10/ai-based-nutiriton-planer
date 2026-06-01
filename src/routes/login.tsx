@@ -22,6 +22,7 @@ function LoginPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
+    console.log("Login button clicked");
     e.preventDefault();
     setIsLoading(true);
     setErrorMessage(null);

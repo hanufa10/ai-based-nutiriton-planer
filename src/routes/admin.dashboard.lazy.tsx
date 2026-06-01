@@ -35,7 +35,20 @@ function AdminDashboardPanel() {
       setLoading(false);
     }
   };
+useEffect(() => {
+  const profile = localStorage.getItem("user_profile");
 
+  if (!profile) {
+    window.location.href = "/login";
+    return;
+  }
+
+  const user = JSON.parse(profile);
+
+  if (user.role !== "admin") {
+    window.location.href = "/dashboard";
+  }
+}, []);
   useEffect(() => { loadDashboardData(); }, [activeTab]);
 
   const handleCreateFood = async (e: React.FormEvent) => {
@@ -80,6 +93,16 @@ function AdminDashboardPanel() {
         <div className="p-4 border-t border-emerald-900/30 text-xs text-gray-500">
           NutPlanner API v1.0.0
         </div>
+        <button
+  onClick={() => {
+    localStorage.clear();
+    window.location.href = "/login";
+  }}
+  className="w-full mt-4 bg-green-600 text-white py-2 rounded-lg"
+>
+  Logout
+</button>
+
       </aside>
 
       {/* CORE FRAME */}
@@ -247,7 +270,7 @@ function AdminDashboardPanel() {
           )}
 
           {/* TAB 4: USER FEEDBACK STREAM (GET /admin/feedback) */}
-          {activeTab === 'feedback' && (
+          {/* {activeTab === 'feedback' && (
             <div className="space-y-3">
               {feedback.length === 0 ? (
                 <div className="bg-white p-8 border rounded-xl text-center text-xs text-gray-400">
@@ -263,7 +286,53 @@ function AdminDashboardPanel() {
                 </div>
               ))}
             </div>
-          )}
+          )} */}
+
+          {/* TAB 4: USER FEEDBACK STREAM (GET /admin/feedback) */}
+{activeTab === 'feedback' && (
+  <div className="space-y-3">
+    {feedback.length === 0 ? (
+      <div className="bg-white p-8 border rounded-xl text-center text-xs text-gray-400">
+        No tracking logs or user recommendations have been submitted yet.
+      </div>
+    ) : (
+      feedback.map((item: any) => (
+        <div
+          key={item.id}
+          className="bg-white p-4 rounded-xl border border-gray-200/60 flex flex-col gap-2 shadow-2xs text-xs"
+        >
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-gray-500">
+              User Profile Reference: #{item.userId}
+            </span>
+
+            <div className="flex items-center gap-3">
+              <span className="font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">
+                ★ {item.rating} / 5
+              </span>
+
+              <button
+                onClick={async () => {
+                  if (confirm("Delete this feedback?")) {
+                    await adminApi.deleteFeedback(item.id);
+                    setFeedback(await adminApi.getFeedback());
+                  }
+                }}
+                className="text-red-600 hover:text-red-800 font-semibold"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+
+          <p className="text-gray-800 leading-relaxed italic">
+            "{item.comment}"
+          </p>
+        </div>
+      ))
+    )}
+  </div>
+)}
 
         </main>
       </div>

@@ -43,7 +43,18 @@ const navigationSections = [
   { id: "metrics", label: "Biometrics & Goals", icon: Shield },
 ];
 
-function SettingsPage() {
+function SettingsPage() {  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("user_profile");
+
+    navigate({
+      to: "/login",
+      replace: true,
+    });
+  };
+
   const { userId, token, isAuthenticated } = useAuth();
   
   const [activeSection, setActiveSection] = useState("account");
@@ -60,18 +71,15 @@ function SettingsPage() {
   });
 
   // Endpoint 2 Form State (/user/{userId})
-  const [profileForm, setProfileForm] = useState({
-    fullName: "",
-    weight: 0,
-    height: 0,
-    age: 0,
-    gender: "male",
-    healthGoal: "lose_weight",
-    activityLevel: 1,
-    allergies: "",
-    dislikes: "",
-    dietaryPreferences: ""
-  });
+const [profileForm, setProfileForm] = useState({
+  fullName: "",
+  weight: 0,
+  height: 0,
+  age: 0,
+  gender: "male",
+  healthGoal: "lose_weight",
+  activityLevel: 1,
+});
 
   const getHeaders = () => ({
     "Content-Type": "application/json",
@@ -110,9 +118,6 @@ function SettingsPage() {
             gender: src.gender || "male",
             healthGoal: src.healthGoal || "lose_weight",
             activityLevel: src.activityLevel !== undefined ? Number(src.activityLevel) : 1,
-            allergies: src.allergies || "",
-            dislikes: src.dislikes || "",
-            dietaryPreferences: src.dietaryPreferences || ""
           });
 
           // Hydrate Account Details from root level payload keys
@@ -139,14 +144,17 @@ function SettingsPage() {
   const handleSave = async () => {
     if (!userId) return;
     setLoading(true);
-    
+    console.log("Sending:", accountForm);
     try {
       if (activeSection === "account") {
         // Account Details Update Path
         const res = await fetch(`${API_BASE_URL}/${userId}/update`, {
           method: "PUT", 
           headers: getHeaders(),
-          body: JSON.stringify(accountForm),
+      body: JSON.stringify({
+  username: accountForm.username,
+  email: accountForm.email,
+}),
         });
         if (!res.ok) throw new Error("Account details update failed.");
       } else {
@@ -249,20 +257,20 @@ function SettingsPage() {
                     value={accountForm.email} 
                     onChange={(val) => setAccountForm(p => ({ ...p, email: val }))} 
                   />
-                  <Field 
-                    label="Password Override" 
-                    type="password"
-                    placeholder="Leave blank to preserve current"
-                    value={accountForm.password} 
-                    onChange={(val) => setAccountForm(p => ({ ...p, password: val }))} 
-                  />
+                <Field
+  label="Password"
+  type="password"
+  value="••••••••"
+  onChange={() => {}}
+  disabled={true}
+/>
                   <div className="block">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Account Role</span>
-                    <select 
-                      value={accountForm.role}
-                      onChange={(e) => setAccountForm(p => ({ ...p, role: e.target.value }))}
-                      className="mt-1.5 h-11 w-full rounded-xl border border-border bg-muted/40 px-3 text-sm focus:bg-background focus:outline-none focus:ring-2 focus:ring-ring/40 transition-all font-medium"
-                    >
+                   <select
+  value={accountForm.role}
+  disabled
+  className="mt-1.5 h-11 w-full rounded-xl border border-border bg-muted/40 px-3 text-sm font-medium opacity-60 cursor-not-allowed"
+>
                       <option value="user">User</option>
                       <option value="admin">Administrator</option>
                     </select>
@@ -325,13 +333,29 @@ function SettingsPage() {
                 </div>
 
                 <div className="mt-4 grid gap-4">
-                  <Field 
-                    label="Activity Level Scale" 
-                    type="number"
-                    value={profileForm.activityLevel !== undefined && profileForm.activityLevel !== null ? profileForm.activityLevel.toString() : ""} 
-                    onChange={(val) => setProfileForm(p => ({ ...p, activityLevel: val === "" ? 1 : Number(val) }))} 
-                  />
-                  <Field 
+                 <div className="block">
+  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+    Activity Level
+  </span>
+
+  <select
+    value={profileForm.activityLevel}
+    onChange={(e) =>
+      setProfileForm((p) => ({
+        ...p,
+        activityLevel: Number(e.target.value),
+      }))
+    }
+    className="mt-1.5 h-11 w-full rounded-xl border border-border bg-muted/40 px-3 text-sm focus:bg-background focus:outline-none focus:ring-2 focus:ring-ring/40 transition-all font-medium"
+  >
+    <option value={1}>Sedentary</option>
+    <option value={2}>Lightly Active</option>
+    <option value={3}>Moderately Active</option>
+    <option value={4}>Very Active</option>
+    <option value={5}>Extremely Active</option>
+  </select>
+</div>
+                  {/* <Field 
                     label="Allergies Manifestations" 
                     value={profileForm.allergies} 
                     onChange={(val) => setProfileForm(p => ({ ...p, allergies: val }))} 
@@ -340,18 +364,26 @@ function SettingsPage() {
                     label="Disliked Ingredients / Dislikes" 
                     value={profileForm.dislikes} 
                     onChange={(val) => setProfileForm(p => ({ ...p, dislikes: val }))} 
-                  />
-                  <Field 
+                  /> */}
+                  {/* <Field 
                     label="Dietary Regimen Preferences" 
                     value={profileForm.dietaryPreferences} 
                     onChange={(val) => setProfileForm(p => ({ ...p, dietaryPreferences: val }))} 
-                  />
+                  /> */}
                 </div>
               </Card>
             )}
 
             <div className="flex justify-end gap-2 pt-2">
-              <button 
+             
+              {/* <button
+    type="button"
+    onClick={handleLogout}
+    className="rounded-xl bg-red-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-red-700"
+  >
+    Logout
+  </button> */}
+             <button 
                 type="button" 
                 className="rounded-xl border border-border px-4 py-2.5 text-xs font-semibold hover:bg-muted transition-colors"
               >
@@ -379,13 +411,15 @@ function Field({
   value, 
   onChange, 
   type = "text",
-  placeholder = "" 
+  placeholder = "",
+  disabled = false,
 }: { 
   label: string; 
   value: string; 
   onChange: (val: string) => void; 
   type?: string;
   placeholder?: string;
+  disabled?: boolean;
 }) {
   return (
     <label className="block w-full">
@@ -395,6 +429,7 @@ function Field({
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
         className="mt-1.5 h-11 w-full rounded-xl border border-border bg-muted/40 px-3 text-sm focus:bg-background focus:outline-none focus:ring-2 focus:ring-ring/40 transition-all font-medium"
       />
     </label>

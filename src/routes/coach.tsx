@@ -6,6 +6,7 @@ import { Card } from "@/components/ui-bits";
 import emailjs from "@emailjs/browser";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import ReactMarkdown from "react-markdown";
+
 export const Route = createFileRoute("/coach")({
   component: CoachPage,
 });
@@ -19,7 +20,7 @@ type ChatStatus = "chatting" | "suggest_handoff" | "with_nutritionist" | "ended"
 
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY || "");
 
-export function CoachPage() {
+function CoachPage() {
   const [messages, setMessages] = useState<Message[]>([
     { from: "coach", text: "Morning! I'm Sage, your AI companion. Ask me anything about your meals or macro balances today!" }
   ]);
