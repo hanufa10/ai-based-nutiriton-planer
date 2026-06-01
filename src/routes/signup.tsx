@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Sparkles, ArrowRight, Activity } from "lucide-react";
+import { ApiError, signUp } from "@/lib/api";
 
 export const Route = createFileRoute("/signup")({
   head: () => ({
@@ -24,62 +25,37 @@ function SignUpPage() {
   setError(null);
 
   try {
-    const response = await fetch("https://nutiplanner-api-2.onrender.com/user/create", {
-      method: "POST",
-      headers: {
-        "accept": "*/*",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        username: formData.name, 
-        email: formData.email,
-        password: formData.password,
-        role: "user", 
-      }),
+    await signUp({
+      username: formData.name,
+      email: formData.email,
+      password: formData.password,
     });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      // Check if it's a Prisma unique constraint violation (P2002)
-      if (data.error?.code === "P2002") {
-        const target = data.error.meta?.target || [];
-        if (target.includes("username")) {
-          throw new Error("This username/first name is already taken. Please try another one.");
-        }
-        if (target.includes("email")) {
-          throw new Error("An account with this email address already exists. Please sign in instead.");
-        }
-      }
-      throw new Error(data.message || `Server responded with status: ${response.status}`);
-    }
-
-    console.log("Success! Account created:", data);
-    
-    // Auto-login the user using the credentials returned from registration
-    if (data.token) {
-      localStorage.setItem("auth_token", data.token);
-      localStorage.setItem("user_profile", JSON.stringify(data.user));
-    }
-    
     navigate({ to: "/onboarding" });
-  } catch (err: any) {
+  } catch (err: unknown) {
     // Enhanced Frontend Debugging Logic
     console.error("Full Fetch Error Object:", err);
 
-    let detailedErrorMessage = "";
-
-    if (err instanceof TypeError && err.message === "Failed to fetch") {
-      detailedErrorMessage = 
-        "Network Error (Failed to fetch). This typically means: \n" +
-        "1. Your backend has blocked this request due to a missing CORS configuration.\n" +
-        "2. The server endpoint is completely unreachable or dropped the connection.";
+    if (err instanceof ApiError) {
+      const body = err.body as { error?: { code?: string; meta?: { target?: string[] } } } | undefined;
+      if (body?.error?.code === "P2002") {
+        const target = body.error.meta?.target || [];
+        if (target.includes("username")) {
+          setError("This username is already taken. Please try another one.");
+          return;
+        }
+        if (target.includes("email")) {
+          setError("An account with this email already exists. Please sign in instead.");
+          return;
+        }
+      }
+      setError(err.message);
+    } else if (err instanceof TypeError && err.message === "Failed to fetch") {
+      setError("Cannot reach the API. Check VITE_API_BASE_URL in .env and restart the dev server.");
+    } else if (err instanceof Error) {
+      setError(err.message);
     } else {
-      // Captures any other runtime or parsing errors gracefully
-      detailedErrorMessage = err.message || "An unexpected error occurred. Please try again.";
+      setError("An unexpected error occurred. Please try again.");
     }
-
-    setError(detailedErrorMessage);
   } finally {
     setIsLoading(false);
   }

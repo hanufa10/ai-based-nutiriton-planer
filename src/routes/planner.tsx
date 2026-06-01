@@ -16,16 +16,18 @@ import {
 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { LogFoodForm } from "@/components/log-food-form";
+import { WeekProgressChart, type WeekChartDay } from "@/components/week-progress-chart";
 import { Card } from "@/components/ui-bits";
 import { ApiError } from "@/lib/api";
-import { getMealLogs, createMealLog } from "@/lib/api/mealLogs";
+import { createMealLog, getMealLogsInRange } from "@/lib/api/mealLogs";
 import {
   getMealPlans,
   getNutritionTargets,
   generateMealPlan,
   regenerateMealPlanByDate,
 } from "@/lib/api/mealPlans";
-import type { MealPlan, MealType } from "@/lib/api-types";
+import { getProgress, getProgressSummary } from "@/lib/api/progress";
+import type { MealLog, MealPlan, MealType, ProgressSummary } from "@/lib/api-types";
 import {
   formatDayShort,
   formatWeekRange,
@@ -34,8 +36,13 @@ import {
   toDateKey,
 } from "@/lib/dates";
 import {
+  isSlotLogged,
+  mealLogsByDate,
+  mealLogsToSlotRows,
+  type MealLogSlotRow,
+} from "@/lib/mealLogDisplay";
+import {
   SLOT_TO_MEAL_TYPE,
-  MEAL_TYPE_TO_SLOT,
   plansByDate,
   slotDisplay,
   type SlotLabel,
@@ -69,10 +76,13 @@ const tints: Record<string, string> = {
 function PlannerPage() {
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
   const [plans, setPlans] = useState<MealPlan[]>([]);
-  const [targets, setTargets] = useState<{ calorieGoal: number } | null>(null);
-  const [todayLogs, setTodayLogs] = useState<
-    { id: string; slot: string; title: string; kcal: number; isCustom: boolean }[]
-  >([]);
+  const [targets, setTargets] = useState<{ calorieGoal: number; proteinGoal: number } | null>(
+    null,
+  );
+  const [todayLogs, setTodayLogs] = useState<MealLogSlotRow[]>([]);
+  const [weekChartDays, setWeekChartDays] = useState<WeekChartDay[]>([]);
+  const [weekLogsByDate, setWeekLogsByDate] = useState<Map<string, MealLog[]>>(new Map());
+  const [summaryByDate, setSummaryByDate] = useState<Map<string, ProgressSummary>>(new Map());
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -95,37 +105,63 @@ function PlannerPage() {
     setLoading(true);
     setError(null);
     try {
-      const [plansData, targetsData, logsData] = await Promise.all([
+      const dates = getWeekDates(weekStart);
+      const dateKeys = dates.map(toDateKey);
+      const weekFrom = dateKeys[0];
+      const weekTo = dateKeys[dateKeys.length - 1];
+
+      const [plansData, targetsData, summaries, weekLogs, weightEntries] = await Promise.all([
         getMealPlans(),
         getNutritionTargets().catch((err) => {
           if (err instanceof ApiError && err.status === 404) return null;
           throw err;
         }),
-        getMealLogs(todayKey),
+        Promise.all(
+          dateKeys.map((key) =>
+            getProgressSummary(key).catch(() => null as ProgressSummary | null),
+          ),
+        ),
+        getMealLogsInRange(weekFrom, weekTo),
+        getProgress({ from: weekFrom, to: weekTo }).catch(() => []),
       ]);
 
       setPlans(plansData);
+      const calorieGoal = targetsData ? Math.round(targetsData.calorieGoal) : 1950;
+      const proteinGoal = targetsData ? Math.round(targetsData.proteinGoal) : 128;
       if (targetsData) {
-        setTargets({ calorieGoal: Math.round(targetsData.calorieGoal) });
+        setTargets({ calorieGoal, proteinGoal });
+      } else {
+        setTargets(null);
       }
 
-      setTodayLogs(
-        logsData.flatMap((log) =>
-          log.items.length > 0
-            ? [
-                {
-                  id: String(log.mealLogId),
-                  slot: MEAL_TYPE_TO_SLOT[log.mealType as MealType] || log.mealType,
-                  title: log.items
-                    .map((i) => i.food?.foodName || `Food #${i.foodId}`)
-                    .join(" · "),
-                  kcal: Math.round(log.caloriesConsumed || 0),
-                  isCustom: false,
-                },
-              ]
-            : [],
-        ),
-      );
+      const weightByDate = new Map<string, number | null>();
+      for (const entry of weightEntries) {
+        const key = entry.date.slice(0, 10);
+        if (entry.weight != null) {
+          weightByDate.set(key, entry.weight);
+        }
+      }
+
+      const summariesMap = new Map<string, ProgressSummary>();
+      const chartDays: WeekChartDay[] = dates.map((date, i) => {
+        const summary = summaries[i];
+        const dateKey = dateKeys[i];
+        if (summary) summariesMap.set(dateKey, summary);
+        return {
+          dateKey,
+          label: formatDayShort(date).slice(0, 3),
+          calories: Math.round(summary?.caloriesConsumed ?? 0),
+          protein: Math.round(summary?.proteinConsumed ?? 0),
+          weight: weightByDate.get(dateKey) ?? null,
+          calorieGoal: Math.round(summary?.calorieGoal ?? calorieGoal),
+        };
+      });
+
+      const logsMap = mealLogsByDate(weekLogs);
+      setWeekChartDays(chartDays);
+      setSummaryByDate(summariesMap);
+      setWeekLogsByDate(logsMap);
+      setTodayLogs(mealLogsToSlotRows(logsMap.get(todayKey) ?? []));
     } catch (err) {
       const msg =
         err instanceof ApiError
@@ -137,7 +173,7 @@ function PlannerPage() {
     } finally {
       setLoading(false);
     }
-  }, [todayKey]);
+  }, [weekStart, todayKey]);
 
   useEffect(() => {
     loadData();
@@ -160,7 +196,10 @@ function PlannerPage() {
         [dateKey]: result.mealPlan,
       }));
       if (result.targets?.calorieGoal) {
-        setTargets({ calorieGoal: Math.round(result.targets.calorieGoal) });
+        setTargets((prev) => ({
+          calorieGoal: Math.round(result.targets!.calorieGoal),
+          proteinGoal: prev?.proteinGoal ?? Math.round(result.targets!.proteinGoal ?? 128),
+        }));
       }
     } catch (err) {
       const msg =
@@ -256,6 +295,10 @@ function PlannerPage() {
   const weeklyAverage =
     daysWithPlans > 0 ? Math.round(weeklyPlannedKcal / daysWithPlans) : null;
 
+  const weekLoggedKcal = weekChartDays.reduce((sum, d) => sum + d.calories, 0);
+  const daysWithLogs = weekChartDays.filter((d) => d.calories > 0).length;
+  const proteinGoal = targets?.proteinGoal ?? 128;
+
   if (loading) {
     return (
       <AppShell>
@@ -327,6 +370,14 @@ function PlannerPage() {
           </div>
         )}
 
+        <WeekProgressChart
+          days={weekChartDays}
+          proteinGoal={proteinGoal}
+          title={`Progress · ${formatWeekRange(weekStart)}`}
+          description="Daily calories from meal logs · citrus dots = protein · berry markers = weight (/progress)"
+          emptyMessage="No logs or weight entries this week. Log meals or add progress to see the chart."
+        />
+
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_320px]">
           <div className="space-y-6">
             <div className="overflow-x-auto pb-2 -mx-6 px-6 xl:mx-0 xl:px-0">
@@ -342,6 +393,8 @@ function PlannerPage() {
                   const hasStaged = !!stagedPlans[dateKey];
                   const isLoadingDay = !!generatingDays[dateKey];
                   const isToday = dateKey === todayKey;
+                  const daySummary = summaryByDate.get(dateKey);
+                  const loggedKcal = Math.round(daySummary?.caloriesConsumed ?? 0);
 
                   return (
                     <div
@@ -360,6 +413,11 @@ function PlannerPage() {
                           <div className="mt-0.5 font-display text-base font-semibold text-foreground">
                             {date.getDate()}
                           </div>
+                          {loggedKcal > 0 && (
+                            <div className="mt-0.5 text-[9px] font-bold normal-case text-leaf">
+                              {loggedKcal} kcal
+                            </div>
+                          )}
                         </div>
 
                         {hasStaged ? (
@@ -409,9 +467,9 @@ function PlannerPage() {
                       const dateKey = toDateKey(date);
                       const isStaged = !!stagedPlans[dateKey];
                       const plan = isStaged ? stagedPlans[dateKey] : planMap.get(dateKey);
-                      const display = isStaged
-                        ? slotDisplay(plan, slot.label)
-                        : slotDisplay(plan, slot.label);
+                      const display = slotDisplay(plan, slot.label);
+                      const dayLogs = weekLogsByDate.get(dateKey) ?? [];
+                      const slotLogged = isSlotLogged(dayLogs, slot.label);
                       const logKey = `${dateKey}-${slot.label}`;
                       const isLogging = loggingMeal === logKey;
 
@@ -434,6 +492,9 @@ function PlannerPage() {
                               <span className={isStaged ? "text-amber-700 font-bold" : ""}>
                                 {display.kcal > 0 ? `${display.kcal} kcal` : "—"}
                                 {isStaged && " ★"}
+                                {slotLogged && (
+                                  <Check className="ml-0.5 inline h-3 w-3 text-leaf" aria-label="Logged" />
+                                )}
                               </span>
                               {display.items.length > 0 && dateKey === todayKey && (
                                 <button
@@ -505,9 +566,7 @@ function PlannerPage() {
                 <ul className="space-y-4 mb-4 relative before:absolute before:bottom-2 before:left-[11px] before:top-2 before:w-0.5 before:bg-border">
                   {todayLogs.map((item) => (
                     <li key={item.id} className="relative flex items-start gap-4 pl-6">
-                      <span
-                        className={`absolute left-[6px] top-1.5 h-2.5 w-2.5 rounded-full border-2 bg-card ${item.isCustom ? "border-berry" : "border-leaf"}`}
-                      />
+                      <span className="absolute left-[6px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-leaf bg-card" />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
                           <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -587,13 +646,13 @@ function PlannerPage() {
           </Card>
           <Card>
             <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Today logged
+              Week logged
             </div>
             <div className="mt-2 font-display text-3xl font-semibold">
-              {totalLoggedKcal.toLocaleString()} kcal
+              {weekLoggedKcal.toLocaleString()} kcal
             </div>
             <div className="text-xs text-muted-foreground">
-              {todayLogs.length} meal log{todayLogs.length === 1 ? "" : "s"}
+              {daysWithLogs}/7 days · today {totalLoggedKcal.toLocaleString()} kcal
             </div>
           </Card>
           <Card>

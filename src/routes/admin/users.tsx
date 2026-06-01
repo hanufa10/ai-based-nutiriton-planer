@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { getUsers, deleteUser } from "@/lib/admin-api";
 import { useEffect, useState } from "react";
 
-export const Route = createFileRoute("src/routes/admin/users.tsx")({
+export const Route = createFileRoute("/admin/users")({
   component: UsersPage,
 });
 

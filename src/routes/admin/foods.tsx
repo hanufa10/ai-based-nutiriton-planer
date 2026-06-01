@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { getFoods, deleteFood } from "@/lib/admin-api";
 import { useEffect, useState } from "react";
 
-export const Route = createFileRoute("src/routes/admin/foods.tsx")({
+export const Route = createFileRoute("/admin/foods")({
   component: FoodsPage,
 });
 

@@ -4,12 +4,12 @@ import { Star, MessageSquare, Loader2, CheckCircle2, AlertCircle, ArrowLeft } fr
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { Card } from "@/components/ui-bits";
 
-const API_FEEDBACK_URL = "https://nutiplanner-api-2.onrender.com/feedback";
+import { apiFetch, AUTH_TOKEN_KEY, USER_PROFILE_KEY } from "@/lib/api";
 
 // --- AUTHENTICATION HOOK BRIDGE ---
 function useAuth() {
-  const token = localStorage.getItem("auth_token");
-  const userProfileStr = localStorage.getItem("user_profile");
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  const userProfileStr = localStorage.getItem(USER_PROFILE_KEY);
   
   let userId: string | null = null;
   if (userProfileStr) {
@@ -61,23 +61,13 @@ function FeedbackPage() {
     setSuccessMessage(null);
 
     try {
-      const response = await fetch(API_FEEDBACK_URL, {
+      await apiFetch("/feedback", {
         method: "POST",
-        headers: {
-          "Accept": "*/*",
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
         body: JSON.stringify({
           rating: Number(rating),
-          comment: comment.trim()
-        })
+          comment: comment.trim(),
+        }),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || errorData.message || "Could not process your feedback record.");
-      }
 
       setSuccessMessage("Thank you! Your feedback has been received and logged.");
       setComment("");

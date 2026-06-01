@@ -23,6 +23,11 @@ export function getWeekDates(weekStart: Date): Date[] {
   });
 }
 
+export function getWeekEndDateKey(weekStart: Date): string {
+  const dates = getWeekDates(weekStart);
+  return toDateKey(dates[dates.length - 1]);
+}
+
 export function formatWeekRange(weekStart: Date): string {
   const end = new Date(weekStart);
   end.setDate(weekStart.getDate() + 6);
