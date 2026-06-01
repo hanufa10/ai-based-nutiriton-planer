@@ -119,9 +119,12 @@ export function AppShell({ children }: AppShellProps) {
               <div className="truncate text-sm font-semibold text-sidebar-foreground leading-tight">
                 {rawDisplayName}
               </div>
-              <div className="text-[11px] text-sidebar-foreground/60">
+              {/* <div className="text-[11px] text-sidebar-foreground/60">
                 Day {currentDay} of plan
-              </div>
+              </div> */}
+              <div className="text-[11px] text-muted-foreground">
+  Welcome 
+</div>
             </div>
           </div>
         )}
@@ -209,7 +212,7 @@ export function AppShell({ children }: AppShellProps) {
                 </button>
               </SheetTrigger>
 
-              <div className="flex flex-1 items-center gap-3 min-w-0">
+              {/* <div className="flex flex-1 items-center gap-3 min-w-0">
                 <div className="relative w-full max-w-[120px] sm:max-w-xs md:max-w-md">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <input
@@ -217,21 +220,31 @@ export function AppShell({ children }: AppShellProps) {
                     className="h-10 w-full rounded-xl border border-border bg-muted/40 pl-9 pr-3 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:bg-background focus:outline-none focus:ring-2 focus:ring-ring/40"
                   />
                 </div>
-              </div>
-              <button className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border text-muted-foreground transition-colors hover:bg-muted">
+              </div> */}
+              
+              {/* <button className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border text-muted-foreground transition-colors hover:bg-muted">
                 <Bell className="h-4.5 w-4.5" />
                 <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-leaf" />
-              </button>
-              <button className="flex h-10 items-center gap-1 sm:gap-2 rounded-xl bg-primary px-2.5 sm:px-3.5 text-xs sm:text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 shrink-0">
-                <Plus className="h-4 w-4 shrink-0" />
-                <span>Log meal</span>
-              </button>
+              </button> */}
+ <div className="ml-auto">
+  <Link
+    to="/library"
+    className="flex h-10 items-center gap-2 rounded-xl bg-primary px-3.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+  >
+    <Plus className="h-4 w-4" />
+    <span>Log meal</span>
+  </Link>
+</div>
+
               
               {/* 3. Uses synchronized storage parameters directly */}
               <div className="flex items-center gap-2 sm:gap-3 border-l border-border pl-2 sm:pl-4 shrink-0">
                 <div className="hidden md:block text-right">
                   <div className="text-sm font-semibold leading-tight">{rawDisplayName}</div>
-                  <div className="text-[11px] text-muted-foreground">Day {currentDay} of plan</div>
+                  {/* <div className="text-[11px] text-muted-foreground">Day {currentDay} of plan</div> */}
+                             <div className="text-[11px] text-muted-foreground">
+  Welcome 
+</div>
                 </div>
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-leaf to-citrus text-sm font-semibold text-primary uppercase select-none">
                   {userInitials}
