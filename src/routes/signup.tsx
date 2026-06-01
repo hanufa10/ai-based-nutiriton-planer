@@ -66,8 +66,11 @@ function SignUpPage() {
       {/* Form Pane */}
       <div className="flex flex-col justify-between p-6 sm:p-12 lg:p-20 bg-background">
         <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <Activity className="h-5 w-5 text-leaf" />
+         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white">      <img
+  src="/fav.png"
+  alt="Logo"
+  className="h-5 w-5 object-contain"
+/>
           </div>
           <span className="font-display text-xl font-bold tracking-tight">NutriSmart</span>
         </div>
