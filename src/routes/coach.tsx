@@ -21,6 +21,7 @@ type ChatStatus = "chatting" | "suggest_handoff" | "with_nutritionist" | "ended"
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY || "");
 
 function CoachPage() {
+  const [userData, setUserData] = useState<any>(null);
   const [messages, setMessages] = useState<Message[]>([
     { from: "coach", text: "Morning! I'm Sage, your AI companion. Ask me anything about your meals or macro balances today!" }
   ]);
@@ -30,12 +31,31 @@ function CoachPage() {
   const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
-
+  useEffect(() => {
+  const storedUser = localStorage.getItem("user_profile");
+  console.log("Attempting to load user data...", storedUser); // Add this
+  
+  if (storedUser) {
+    try {
+      setUserData(JSON.parse(storedUser));
+      console.log("Successfully loaded:", JSON.parse(storedUser)); // Add this
+    } catch (e) {
+      console.error("Error parsing user profile", e);
+    }
+  } else {
+    console.warn("No user data found in localStorage with key 'user_profile'");
+  }
+}, []);
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
-  const sendConversationToEmail = async (nutritionistQuestion: string, currentHistory: Message[]) => {
+  const sendConversationToEmail = async (
+    nutritionistQuestion: string, 
+    currentHistory: Message[],
+    userEmail: string, 
+    userName: string
+  ) => {
     setIsSendingEmail(true);
     try {
       const transcript = currentHistory
@@ -43,7 +63,8 @@ function CoachPage() {
         .join("\n");
 
       const templateParams = {
-        user_name: "hanan",
+        user_name: userName || "Valued User",
+        user_email: userEmail || "No email on file",
         user_new_question: nutritionistQuestion,
         chat_transcript: transcript,
       };
@@ -69,7 +90,12 @@ function CoachPage() {
       const updatedHistory: Message[] = [...messages, { from: "user", text: textToSend }];
       setMessages(updatedHistory);
       setInputValue("");
-      sendConversationToEmail(textToSend, updatedHistory);
+      sendConversationToEmail(
+        textToSend, 
+        updatedHistory,
+        userData?.email || "guest@example.com",
+        userData?.username || "Guest"
+      );
 
       setTimeout(() => {
         setMessages((prev) => [
@@ -98,7 +124,7 @@ if (
     ...prev,
     {
       from: "coach",
-      text: `You can contact our nutrition specialist at **hanahailekiros27@gmail.com**.
+      text: `You can contact our nutrition specialist at **hananfatih012@gmail.com**.
 
 You may also click **"Talk to Nutritionist"** to send your question directly through the app.`
     }
