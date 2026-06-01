@@ -27,8 +27,11 @@ function LandingPage() {
       {/* Navigation Bar */}
       <header className="sticky top-0 z-50 flex items-center justify-between border-b border-border/50 bg-background/80 px-6 py-4 backdrop-blur-md">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Activity className="h-5 w-5 text-leaf" />
+<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white">            <img
+  src="/fav.png"
+  alt="NutriSmart Logo"
+  className="h-5 w-5 object-contain"
+/>
           </div>
           <span className="font-display text-lg font-bold tracking-tight">NutriSmart</span>
         </div>
@@ -63,7 +66,7 @@ function LandingPage() {
           <div className="relative mx-auto max-w-4xl text-center">
             <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-sm font-medium shadow-sm mb-6">
               <span className="flex h-2 w-2 rounded-full bg-leaf animate-pulse" />
-              NutriSmart Engine v2.0 is live
+              NutriSmart Engine is live
             </div>
             
             <h1 className="font-display text-5xl font-bold leading-[1.1] tracking-tight sm:text-7xl">
@@ -144,7 +147,11 @@ function LandingPage() {
 
               <div className="relative text-center">
                 <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-3xl bg-lavender/20 text-primary shadow-sm mb-6">
-                  <Activity className="h-10 w-10 text-lavender" />
+                  <img
+  src="/fav.png"
+  alt="Logo"
+  className="h-5 w-5 object-contain"
+/>
                 </div>
                 <h3 className="font-display text-xl font-bold">3. Track & Adjust</h3>
                 <p className="mt-2 text-sm text-muted-foreground">
@@ -217,8 +224,12 @@ function LandingPage() {
         <div className="mx-auto max-w-6xl grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <Activity className="h-4 w-4 text-leaf" />
+<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white">
+               <img
+  src="/fav.png"
+  alt="Logo"
+  className="h-4 w-4 object-contain"
+/>
               </div>
               <span className="font-display text-lg font-bold tracking-tight">NutriSmart</span>
             </div>

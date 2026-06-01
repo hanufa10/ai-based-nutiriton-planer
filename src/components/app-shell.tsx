@@ -111,15 +111,18 @@ useEffect(() => {
     return (
       <div className="flex h-full flex-col">
         <Link to="/dashboard" className="flex items-center gap-2.5 px-2 py-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-leaf shadow-[0_4px_14px_-2px] shadow-leaf/40">
-            <Leaf className="h-5 w-5 text-primary" />
+<div className="flex h-9 w-9 items-center justify-center rounded-xl bg-black">           <img
+  src="/fav.png"
+  alt="NutriSmart Logo"
+  className="h-6 w-6 object-contain"
+/>
           </div>
           <div>
             <div className="font-display text-lg font-semibold text-sidebar-foreground">
               NutriSmart
             </div>
             <div className="text-[11px] uppercase tracking-wider text-sidebar-foreground/50">
-              Pro plan
+               Plan your Day 
             </div>
           </div>
         </Link>

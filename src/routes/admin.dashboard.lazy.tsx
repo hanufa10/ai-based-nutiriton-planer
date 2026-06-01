@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createLazyFileRoute } from '@tanstack/react-router';
 import { LayoutDashboard, Utensils, Users, MessageSquare, ShieldAlert, Plus, Trash2, RefreshCw } from 'lucide-react';
 import { adminApi } from '../lib/api/admin';
-
+import { LogOut } from "lucide-react";
 export const Route = createLazyFileRoute('/admin/dashboard')({
   component: AdminDashboardPanel,
 });
@@ -72,8 +72,15 @@ useEffect(() => {
       <aside className="w-[240px] bg-[#142314] text-gray-200 fixed h-full flex flex-col justify-between border-r border-emerald-950">
         <div>
           <div className="p-6 border-b border-emerald-900/30 flex items-center gap-2">
-            <span className="text-xl">🥞</span>
-            <h1 className="font-bold tracking-tight text-white text-base">NutPlanner Admin</h1>
+          {/* <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-black">           */}
+             <img
+  src="/fav.png"
+  alt="NutriSmart Logo"
+  className="h-6 w-6 object-contain"
+/>
+   <h1 className="font-serif text-lg font-semibold tracking-tight whitespace-nowrap">
+  Admin Dashboard
+</h1>
           </div>
           <nav className="p-4 space-y-1">
             <button onClick={() => setActiveTab('overview')} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium ${activeTab === 'overview' ? 'bg-emerald-600/20 text-emerald-400 font-bold' : 'text-gray-400 hover:bg-emerald-950'}`}>
@@ -91,18 +98,18 @@ useEffect(() => {
           </nav>
         </div>
         <div className="p-4 border-t border-emerald-900/30 text-xs text-gray-500">
-          NutPlanner API v1.0.0
+          NutriSmart API 
         </div>
-        <button
+    <button
   onClick={() => {
     localStorage.clear();
     window.location.href = "/login";
   }}
-  className="w-full mt-4 bg-green-600 text-white py-2 rounded-lg"
+  className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-400 hover:text-red-400 transition-colors"
 >
-  Logout
+  <LogOut size={18} />
+  <span>Log out</span>
 </button>
-
       </aside>
 
       {/* CORE FRAME */}
@@ -125,7 +132,9 @@ useEffect(() => {
               <div className="bg-[#122512] text-emerald-100 p-5 rounded-xl border border-emerald-950 flex items-start gap-4">
                 <div className="bg-emerald-800/40 p-2.5 rounded-lg text-base">⚙️</div>
                 <div>
-                  <h4 className="font-bold text-white text-sm">Matcher Operational Parameters</h4>
+                <h4 className="font-serif text-xl font-semibold text-white">
+  Operational overview
+</h4>
                   <p className="text-xs text-gray-300 mt-1 leading-relaxed">
                     Stochastic constraints successfully enforced: <strong>Cosine-Similarity Matching</strong> engine is isolating generated targets against regional matrices. Frequency filtering prevents target repeats if a profile uses the target 4+ times inside rolling 7-day intervals.
                   </p>
@@ -134,22 +143,24 @@ useEffect(() => {
 
               {/* API Reports Matrix /admin/reports */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white p-5 rounded-xl border border-gray-200/60 shadow-xs">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Users Verified</span>
+                <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+<span className="text-sm font-medium text-gray-500">
+  Total users
+</span>
                   <p className="text-2xl font-black text-gray-900 mt-1">{reports?.totalUsers ?? '...'}</p>
                 </div>
-                <div className="bg-white p-5 rounded-xl border border-gray-200/60 shadow-xs">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Food Variations Cached</span>
+                <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+                  <span className="text-sm font-medium text-gray-500">Foods in database</span>
                   <p className="text-2xl font-black text-gray-900 mt-1">{reports?.totalFoods ?? '...'}</p>
                 </div>
-                <div className="bg-white p-5 rounded-xl border border-gray-200/60 shadow-xs">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Active Plans Tracked</span>
+                <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+                  <span className="text-sm font-medium text-gray-500">Active Plans Tracked</span>
                   <p className="text-2xl font-black text-gray-900 mt-1">{reports?.activePlansToday ?? '...'}</p>
                 </div>
               </div>
 
               {/* Cron Run Parameters */}
-              <div className="bg-white p-6 rounded-xl border border-gray-200/60 shadow-xs space-y-4">
+              <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-2">
                   <ShieldAlert size={14} className="text-amber-500" /> Internal Automation Daemon Logs
                 </h3>
@@ -171,7 +182,7 @@ useEffect(() => {
           {activeTab === 'foods' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Insert Form */}
-              <div className="bg-white p-5 rounded-xl border border-gray-200/60 h-fit space-y-4 shadow-2xs">
+              <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm h-fit space-y-4">
                 <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
                   <Plus size={16} className="text-emerald-600" /> Populate Food Repository
                 </h3>
@@ -207,7 +218,7 @@ useEffect(() => {
               </div>
 
               {/* Food Dataset Output Render */}
-              <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200/60 overflow-hidden shadow-2xs">
+              <div className="lg:col-span-2 bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
                 <div className="p-4 border-b border-gray-100 bg-gray-50/50">
                   <h3 className="text-xs font-bold uppercase text-gray-400 tracking-wider">Active Dataset Entries</h3>
                 </div>
@@ -234,7 +245,7 @@ useEffect(() => {
 
           {/* TAB 3: USER DIRECTORY (GET/DELETE /admin/users) */}
           {activeTab === 'users' && (
-            <div className="bg-white rounded-xl border border-gray-200/60 overflow-hidden shadow-2xs">
+            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-100 text-gray-400 font-bold uppercase tracking-wider">

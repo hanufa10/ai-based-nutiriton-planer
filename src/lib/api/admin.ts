@@ -43,4 +43,9 @@ export const adminApi = {
       Array<{ id: number; userId: number; rating: number; comment: string; createdAt: string }>
     >(`/admin/feedback${query}`);
   },
+
+deleteFeedback: (feedbackId: number) =>
+  apiFetch(`/admin/feedback/${feedbackId}`, {
+    method: "DELETE",
+  }),
 };
