@@ -8,7 +8,6 @@ import {
   Coffee,
   Salad,
   Soup,
-  Cookie,
   Check,
   AlertCircle,
   X,
@@ -62,7 +61,6 @@ export const Route = createFileRoute("/planner")({
 const slots = [
   { label: "Breakfast" as SlotLabel, icon: Coffee, time: "8:00", tint: "citrus" },
   { label: "Lunch" as SlotLabel, icon: Salad, time: "12:30", tint: "leaf" },
-  { label: "Snack" as SlotLabel, icon: Cookie, time: "15:30", tint: "berry" },
   { label: "Dinner" as SlotLabel, icon: Soup, time: "19:00", tint: "lavender" },
 ] as const;
 
@@ -252,7 +250,7 @@ function PlannerPage() {
         mealType,
         items: displayItems.map((item) => ({
           foodId: item.foodId,
-          quantity: item.quantity || 1,
+          quantity: item.quantity ?? 1,
         })),
       });
       notifyMealLogUpdated();
@@ -374,7 +372,7 @@ function PlannerPage() {
           days={weekChartDays}
           proteinGoal={proteinGoal}
           title={`Progress · ${formatWeekRange(weekStart)}`}
-          description="Daily calories from meal logs · citrus dots = protein · berry markers = weight (/progress)"
+          description="Lines: daily kcal & protein · dashed: goal · berry: weight (/progress)"
           emptyMessage="No logs or weight entries this week. Log meals or add progress to see the chart."
         />
 
@@ -485,7 +483,10 @@ function PlannerPage() {
                               isStaged ? "border border-dashed border-amber-400" : ""
                             }`}
                           >
-                            <div className="line-clamp-2 text-xs font-medium leading-snug text-foreground">
+                            <div
+                              className="line-clamp-2 text-xs font-medium leading-snug text-foreground"
+                              title={display.detail || undefined}
+                            >
                               {display.title}
                             </div>
                             <div className="mt-2 flex items-center justify-between text-[10px] font-semibold text-foreground/60">

@@ -8,7 +8,6 @@ import {
   Coffee,
   Salad,
   Soup,
-  Cookie,
   ChevronRight,
   Sparkles,
   TrendingUp,
@@ -20,9 +19,14 @@ import { Ring } from "@/components/ui-bits";
 import { ApiError } from "@/lib/api";
 import { getMealLogs } from "@/lib/api/mealLogs";
 import { getMealPlans, getNutritionTargets } from "@/lib/api/mealPlans";
+import { getHydration, addHydration } from "@/lib/api/hydration";
 import { getProgressSummary } from "@/lib/api/progress";
 import type { MealPlan, MealPlanItem, MealType } from "@/lib/api-types";
 import { toDateKey } from "@/lib/dates";
+import {
+  formatMealPlanItemsMacroDetail,
+  formatMealPlanItemsTitle,
+} from "@/lib/foodDisplay";
 import { MEAL_TYPE_TO_SLOT, getItemsForSlot, type SlotLabel } from "@/lib/mealPlanDisplay";
 import { onMealLogUpdated } from "@/lib/mealLogEvents";
 
@@ -46,25 +50,32 @@ interface UserProfile {
   createdAt: string;
 }
 
-const MEAL_ORDER: MealType[] = ["breakfast", "lunch", "snack", "dinner"];
+const MEAL_ORDER = ["breakfast", "lunch", "dinner"] as const;
+type PlannedMealType = (typeof MEAL_ORDER)[number];
 
 const MEAL_META: Record<
-  MealType,
+  PlannedMealType,
   { icon: typeof Coffee; tint: "leaf" | "citrus" | "berry" | "lavender"; time: string }
 > = {
   breakfast: { icon: Coffee, tint: "citrus", time: "8:30 AM" },
   lunch: { icon: Salad, tint: "leaf", time: "12:45 PM" },
-  snack: { icon: Cookie, tint: "berry", time: "3:30 PM" },
   dinner: { icon: Soup, tint: "lavender", time: "7:15 PM" },
 };
 
 function itemsToMealRow(items: MealPlanItem[]) {
-  const title = items.map((i) => i.food?.foodName || `Food #${i.foodId}`).join(" · ");
+  const title = formatMealPlanItemsTitle(items);
+  const detail = formatMealPlanItemsMacroDetail(items);
   const kcal = Math.round(items.reduce((s, i) => s + (i.calories || 0), 0));
   const p = Math.round(items.reduce((s, i) => s + (i.protein || 0), 0));
   const c = Math.round(items.reduce((s, i) => s + (i.carbs || 0), 0));
   const f = Math.round(items.reduce((s, i) => s + (i.fat || 0), 0));
-  return { title, sub: `${items.length} item${items.length === 1 ? "" : "s"}`, kcal, macros: { p, c, f } };
+  return {
+    title,
+    detail,
+    sub: `${items.length} item${items.length === 1 ? "" : "s"}`,
+    kcal,
+    macros: { p, c, f },
+  };
 }
 
 function DashboardPage() {
@@ -77,6 +88,7 @@ function DashboardPage() {
 
   const [user, setUser] = useState<UserProfile | null>(null);
   const [water, setWater] = useState(0);
+  const [waterSaving, setWaterSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -99,7 +111,7 @@ function DashboardPage() {
     setLoading(true);
     setError(null);
     try {
-      const [targets, plans, logs, summary] = await Promise.all([
+      const [targets, plans, logs, summary, hydration] = await Promise.all([
         getNutritionTargets().catch((err) => {
           if (err instanceof ApiError && err.status === 404) return null;
           throw err;
@@ -107,6 +119,7 @@ function DashboardPage() {
         getMealPlans(),
         getMealLogs(todayKey),
         getProgressSummary(todayKey).catch(() => null),
+        getHydration(todayKey).catch(() => ({ logDate: todayKey, liters: 0 })),
       ]);
 
       if (targets) {
@@ -135,6 +148,7 @@ function DashboardPage() {
       setFat(Math.round(consumed.fat));
       setLoggedMealTypes(new Set(logs.map((l) => l.mealType)));
       setMealsLoggedToday(logs.length);
+      setWater(Number(hydration.liters) || 0);
 
       if (summary?.adherencePct != null) {
         setAdherencePct(Math.round(summary.adherencePct));
@@ -217,11 +231,12 @@ function DashboardPage() {
       } else state = "upcoming";
       return { mealType, ...meta, ...row, state };
     }).filter(Boolean) as Array<{
-      mealType: MealType;
+      mealType: PlannedMealType;
       icon: typeof Coffee;
       tint: "leaf" | "citrus" | "berry" | "lavender";
       time: string;
       title: string;
+      detail: string;
       sub: string;
       kcal: number;
       macros: { p: number; c: number; f: number };
@@ -229,8 +244,28 @@ function DashboardPage() {
     }>;
   }, [todayPlan, loggedMealTypes]);
 
-  const handleAddWater = () => {
-    setWater((prev) => Math.min(waterTarget, Number((prev + 0.25).toFixed(2))));
+  const handleAddWater = async () => {
+    if (water >= waterTarget || waterSaving) return;
+    const previous = water;
+    const optimistic = Math.min(waterTarget, Number((previous + 0.25).toFixed(2)));
+    setWater(optimistic);
+    setWaterSaving(true);
+    setError(null);
+    try {
+      const entry = await addHydration(todayKey, 0.25);
+      setWater(Math.min(waterTarget, Number(entry.liters) || optimistic));
+    } catch (err) {
+      setWater(previous);
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Failed to save water intake",
+      );
+    } finally {
+      setWaterSaving(false);
+    }
   };
 
   const streakDisplay = mealsLoggedToday > 0 ? `${mealsLoggedToday} meals` : "—";
@@ -381,6 +416,7 @@ function DashboardPage() {
                     tint={meal.tint}
                     time={meal.time}
                     title={meal.title}
+                    titleTooltip={meal.detail}
                     sub={meal.sub}
                     kcal={meal.kcal}
                     macros={meal.macros}
@@ -451,7 +487,7 @@ function DashboardPage() {
             </div>
             <button 
               onClick={handleAddWater}
-              disabled={water >= waterTarget}
+              disabled={water >= waterTarget || waterSaving}
               className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Plus className="h-4 w-4" /> {water >= waterTarget ? "Goal Met!" : "Add 250 ml"}
@@ -568,6 +604,7 @@ function Meal({
   tint,
   time,
   title,
+  titleTooltip,
   sub,
   kcal,
   macros,
@@ -577,6 +614,7 @@ function Meal({
   tint: "leaf" | "citrus" | "berry" | "lavender";
   time: string;
   title: string;
+  titleTooltip?: string;
   sub: string;
   kcal: number;
   macros: { p: number; c: number; f: number };
@@ -609,7 +647,12 @@ function Meal({
             {stateLabel}
           </span>
         </div>
-        <div className="mt-0.5 truncate font-display text-base font-semibold">{title}</div>
+        <div
+          className="mt-0.5 truncate font-display text-base font-semibold"
+          title={titleTooltip || undefined}
+        >
+          {title}
+        </div>
         <div className="truncate text-xs text-muted-foreground">{sub}</div>
       </div>
       <div className="hidden text-right sm:block">

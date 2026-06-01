@@ -11,8 +11,7 @@ import { notifyMealLogUpdated } from "@/lib/mealLogEvents";
 function defaultMealType(): MealType {
   const hour = new Date().getHours();
   if (hour < 11) return "breakfast";
-  if (hour < 15) return "lunch";
-  if (hour < 18) return "snack";
+  if (hour < 17) return "lunch";
   return "dinner";
 }
 
@@ -158,7 +157,6 @@ export function LogFoodForm({
           >
             <option value="breakfast">Breakfast</option>
             <option value="lunch">Lunch</option>
-            <option value="snack">Snack</option>
             <option value="dinner">Dinner</option>
           </select>
         </div>
