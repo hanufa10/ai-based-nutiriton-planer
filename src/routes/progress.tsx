@@ -193,7 +193,7 @@ function ProgressPage() {
             days={weekData}
             proteinGoal={proteinGoal}
             title="Calories vs. protein"
-            description="Bars: kcal from meal logs · dots: protein · markers: weight from /progress"
+            description="Lines: daily kcal & protein · dashed: calorie goal · berry: weight (kg)"
           />
 
           <Card>
