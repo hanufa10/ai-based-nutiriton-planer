@@ -29,36 +29,40 @@ function OnboardingPage() {
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(null);
 
-  // --- CORE STATE ARCHITECTURE ---
   const [profile, setProfile] = useState({
     fullName: "",
-    goal: "maintain", // lose | gain | maintain
-    activity: "moderate", // sedentary | moderate | active
+    goal: "maintain",
+    activity: "moderate",
     weight: "",
     height: "",
-    age: "22", // Default age fallback based on user profile configurations
-    gender: "female", // Context-aligned standard profile initialization
+    age: "22",
+    gender: "female",
     restrictions: [] as string[],
   });
 
-  // Pull local session context parameters safely on mount
+  // --- VALIDATION HELPER ---
+  const validateForm = (currentStep: number): boolean => {
+    setErrorMessage(null);
+    if (currentStep === 2) {
+      const w = parseFloat(profile.weight);
+      const h = parseFloat(profile.height);
+      const a = parseInt(profile.age, 10);
+      if (isNaN(w) || w < 30 || w > 300) { setErrorMessage("Please enter a valid weight (30-300 kg)."); return false; }
+      if (isNaN(h) || h < 100 || h > 250) { setErrorMessage("Please enter a valid height (100-250 cm)."); return false; }
+      if (isNaN(a) || a < 13 || a > 100) { setErrorMessage("Please enter a valid age (13-100 years)."); return false; }
+    }
+    return true;
+  };
+
   useEffect(() => {
     try {
-      // 1. Acquire authorization token from storage matrix
       const token = localStorage.getItem("auth_token");
-      
-      // Route Protection Guardrail: If no token exists, bounce back to authenticate
       if (!token) {
         setErrorMessage("Authentication session missing. Redirecting to login...");
-        setTimeout(() => {
-          navigate({ to: "/login" });
-        }, 1500);
+        setTimeout(() => { navigate({ to: "/login" }); }, 1500);
         return;
       }
-      
       setAuthToken(token);
-
-      // 2. Load user session details
       const storedSession = localStorage.getItem("user_profile");
       if (storedSession) {
         const parsed: StoredUserSession = JSON.parse(storedSession);
@@ -72,29 +76,23 @@ function OnboardingPage() {
     }
   }, [navigate]);
 
-  const nextStep = () => setStep((s) => (s + 1) as Step);
-  const prevStep = () => setStep((s) => (s - 1) as Step);
-
-  const toggleRestriction = (id: string) => {
-    setProfile((prev) => ({
-      ...prev,
-      restrictions: prev.restrictions.includes(id)
-        ? prev.restrictions.filter((r) => r !== id)
-        : [...prev.restrictions, id],
-    }));
+  const nextStep = () => {
+    if (validateForm(step)) setStep((s) => (s + 1) as Step);
+  };
+  
+  const prevStep = () => {
+    setErrorMessage(null);
+    setStep((s) => (s - 1) as Step);
   };
 
-  // --- API INTEGRATION HANDLER ---
   const handleFinish = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateForm(2)) return; // Ensure metrics are valid on final step
     
-    // Fallback assignment validation if profile context session parameter hasn't synced
     const targetUserId = currentUserId || 3; 
-    
     setIsSubmitting(true);
     setErrorMessage(null);
 
-    // Map UI structural configurations to strict API specifications
     const goalMapping: Record<string, string> = {
       lose: "lose_weight",
       maintain: "maintain",
@@ -128,7 +126,6 @@ function OnboardingPage() {
         headers: {
           "Content-Type": "application/json",
           "Accept": "application/json",
-          // INJECTED AUTHORIZATION VALUE TO PREVENT 401 MUTATIONS CRASH
           "Authorization": `Bearer ${authToken}`
         },
         body: JSON.stringify(payload),
@@ -142,21 +139,17 @@ function OnboardingPage() {
       }
 
       const jsonResponse = await response.json();
-      
-      // Sync mutations smoothly back down into client layer layout context state cache
       if (jsonResponse?.data) {
-        const freshSessionData = {
+        localStorage.setItem("user_profile", JSON.stringify({
           userId: jsonResponse.data.userId,
           username: jsonResponse.data.username,
           email: jsonResponse.data.email,
           role: jsonResponse.data.role,
           createdAt: jsonResponse.data.createdAt,
           userInfo: jsonResponse.data.userInfo
-        };
-        localStorage.setItem("user_profile", JSON.stringify(freshSessionData));
+        }));
       }
 
-      // Route smoothly into dashboard view
       navigate({ to: "/dashboard" });
     } catch (error: any) {
       console.error("Critical onboarding form propagation exception caught:", error);
@@ -169,7 +162,6 @@ function OnboardingPage() {
   return (
     <div className="min-h-screen bg-muted/30 py-12 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-2xl">
-        {/* Progress header */}
         <div className="mb-8 flex items-center justify-between px-2">
           <div className="flex items-center gap-2">
             <span className="font-display text-lg font-bold">NutriSmart</span>
@@ -180,17 +172,13 @@ function OnboardingPage() {
           </div>
         </div>
 
-        {/* Error Notification Alert */}
         {errorMessage && (
           <div className="mb-4 rounded-2xl bg-destructive/10 p-4 text-sm font-medium text-destructive animate-in fade-in slide-in-from-top-2">
             {errorMessage}
           </div>
         )}
 
-        {/* Form panel block */}
         <div className="rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] sm:p-10">
-          
-          {/* STEP 1: Core Goal */}
           {step === 1 && (
             <div>
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-citrus/20 text-primary">
@@ -232,7 +220,6 @@ function OnboardingPage() {
             </div>
           )}
 
-          {/* STEP 2: Activity Profiles & Physical Metrics */}
           {step === 2 && (
             <div>
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-lavender/20 text-primary">
@@ -323,38 +310,30 @@ function OnboardingPage() {
             </div>
           )}
 
-        {/* STEP 3: FINAL BUILD DASHBOARD ONLY */}
-{step === 3 && (
-  <div className="flex flex-col items-center justify-center text-center py-10">
-
-    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-leaf-soft text-primary">
-      <Dumbbell className="h-6 w-6 text-leaf" />
-    </div>
-
-    <h2 className="mt-6 font-display text-2xl font-semibold sm:text-3xl">
-      Ready to build your dashboard
-    </h2>
-
-    <p className="mt-2 text-sm text-muted-foreground">
-      Your profile setup is complete. Click below to generate your personalized plan.
-    </p>
-
-    {/* ONLY BUTTON */}
-    <div className="mt-8">
-      <button
-        type="button"
-        disabled={isSubmitting || !authToken}
-        onClick={handleFinish}
-        className="rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground hover:opacity-90 flex items-center gap-2 disabled:opacity-50"
-      >
-        {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-        {isSubmitting ? "Building..." : "Build My Dashboard"}
-      </button>
-    </div>
-
-  </div>
-)}
-
+          {step === 3 && (
+            <div className="flex flex-col items-center justify-center text-center py-10">
+              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-leaf-soft text-primary">
+                <Dumbbell className="h-6 w-6 text-leaf" />
+              </div>
+              <h2 className="mt-6 font-display text-2xl font-semibold sm:text-3xl">
+                Ready to build your dashboard
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Your profile setup is complete. Click below to generate your personalized plan.
+              </p>
+              <div className="mt-8">
+                <button
+                  type="button"
+                  disabled={isSubmitting || !authToken}
+                  onClick={handleFinish}
+                  className="rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground hover:opacity-90 flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {isSubmitting ? "Building..." : "Build My Dashboard"}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

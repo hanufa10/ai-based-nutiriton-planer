@@ -21,9 +21,12 @@ function SignUpPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
-  setIsLoading(true);
   setError(null);
-
+  if (!formData.name.trim() || !formData.email.trim() || !formData.password.trim()) {
+        setError("Please fill in all fields.");
+        return;
+      }
+  setIsLoading(true);
   try {
     await signUp({
       username: formData.name,

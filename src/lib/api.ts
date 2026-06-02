@@ -109,12 +109,15 @@ async function parseErrorMessage(res: Response): Promise<{ message: string; body
 function handleAuthFailure(status: number, message: string) {
   const isAuthError =
     status === 401 ||
-    status === 403 ||
-    /invalid|expired|token|unauthorized/i.test(message);
+    status === 403;
 
   if (!isAuthError) return;
 
+  // ONLY redirect if we are sure the token is actually bad
+  // or if the server explicitly told us the session expired.
+  console.warn("Auth failure detected, clearing session.");
   clearAuth();
+  
   if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
     window.location.href = "/login";
   }

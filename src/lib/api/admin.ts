@@ -17,7 +17,8 @@ export const adminApi = {
   updateUser: (userId: number, data: Record<string, unknown>) =>
     apiFetch(`/admin/users/${userId}`, { method: "PUT", body: JSON.stringify(data) }),
 
-  deleteUser: (userId: number) => apiFetch(`/admin/users/${userId}`, { method: "DELETE" }),
+  deleteUser: (userId: number) => 
+    apiFetch<{ message: string }>(`/admin/users/${userId}`, { method: "DELETE" }),
 
   getFoods: () =>
     apiFetch<
@@ -36,7 +37,8 @@ export const adminApi = {
   createFood: (food: Record<string, unknown>) =>
     apiFetch("/admin/foods", { method: "POST", body: JSON.stringify(food) }),
 
-  deleteFood: (id: number) => apiFetch(`/admin/foods/${id}`, { method: "DELETE" }),
+  deleteFood: (id: number) => 
+    apiFetch<{ message: string }>(`/admin/foods/${id}`, { method: "DELETE" }),
 
   getFeedback: (userId?: number) => {
     const query = userId ? `?userId=${userId}` : "";
