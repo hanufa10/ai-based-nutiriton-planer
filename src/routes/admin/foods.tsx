@@ -2,14 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { getFoods, deleteFood } from "@/lib/admin-api";
 import { useEffect, useState } from "react";
 interface FoodItem {
-  id: number;
+  foodId: number;
   foodName: string;
   foodCalories: number;
   foodProtein: number;
   carbs: number;
   fat: number;
   category: string;
-  foodType: string;
+  foodType: string | null;
 }
 export const Route = createFileRoute("/admin/foods")({
   component: FoodsPage,
@@ -22,9 +22,9 @@ function FoodsPage() {
 useEffect(() => {
   getFoods().then((data) => setFoods(data as FoodItem[]));
 }, []);
-  const handleDelete = async (id: number) => {
-    await deleteFood(id);
-    setFoods((prev) => prev.filter((f) => f.id !== id));
+  const handleDelete = async (foodId: number) => {
+    await deleteFood(foodId);
+    setFoods((prev) => prev.filter((f) => f.foodId !== foodId));
   };
 
   return (
@@ -32,9 +32,9 @@ useEffect(() => {
       <h1>Foods</h1>
 
       {foods.map((f) => (
-        <div key={f.id}>
+        <div key={f.foodId}>
           {f.foodName} - {f.foodCalories} kcal
-          <button onClick={() => handleDelete(f.id)}>Delete</button>
+          <button onClick={() => handleDelete(f.foodId)}>Delete</button>
         </div>
       ))}
     </div>

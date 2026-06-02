@@ -21,7 +21,7 @@ function AdminDashboardPanel() {
 
   // Form State for POST /admin/foods
   const [newFood, setNewFood] = useState({
-    foodName: '', foodCalories: 0, foodProtein: 0, carbs: 0, fat: 0, category: 'Breakfast', foodType: 'local'
+    foodName: '', foodCalories: 0, foodProtein: 0, carbs: 0, fat: 0, category: 'Breakfast', foodType: 'grain'
   });
 
   const loadDashboardData = async () => {
@@ -62,7 +62,7 @@ function AdminDashboardPanel() {
     e.preventDefault();
     try {
       await adminApi.createFood(newFood);
-      setNewFood({ foodName: '', foodCalories: 0, foodProtein: 0, carbs: 0, fat: 0, category: 'Breakfast', foodType: 'local' });
+      setNewFood({ foodName: '', foodCalories: 0, foodProtein: 0, carbs: 0, fat: 0, category: 'Breakfast', foodType: 'grain' });
       setFoods(await adminApi.getFoods());
     } catch (err) {
       if (err instanceof ApiError) {
@@ -340,14 +340,14 @@ function AdminDashboardPanel() {
                   {foods.length === 0 ? (
                     <p className="p-4 text-xs text-gray-400">No active custom food definitions found. Use the editor frame to create entries.</p>
                   ) : foods.map((food: any) => (
-                    <div key={food.id} className="p-4 flex items-center justify-between text-xs hover:bg-gray-50/50">
+                    <div key={food.foodId} className="p-4 flex items-center justify-between text-xs hover:bg-gray-50/50">
                       <div>
                         <h4 className="font-bold text-gray-900">{food.foodName}</h4>
                         <p className="text-gray-400 mt-0.5">
                           C: {food.carbs}g · P: {food.foodProtein}g · F: {food.fat}g — <span className="italic">{food.foodCalories} kcal</span>
                         </p>
                       </div>
-                      <button onClick={() => handleDeleteFood(food.id)} className="text-gray-400 hover:text-rose-600 p-1">
+                      <button onClick={() => handleDeleteFood(food.foodId)} className="text-gray-400 hover:text-rose-600 p-1">
                         <Trash2 size={14} />
                       </button>
                     </div>

@@ -22,22 +22,25 @@ export const adminApi = {
   getFoods: () =>
     apiFetch<
       Array<{
-        id: number;
+        foodId: number;
         foodName: string;
         foodCalories: number;
         foodProtein: number;
         carbs: number;
         fat: number;
         category: string;
-        foodType: string;
+        foodType: string | null;
       }>
     >("/admin/foods"),
 
   createFood: (food: Record<string, unknown>) =>
     apiFetch("/admin/foods", { method: "POST", body: JSON.stringify(food) }),
 
-  deleteFood: (id: number) => 
-    apiFetch<{ message: string }>(`/admin/foods/${id}`, { method: "DELETE" }),
+  updateFood: (foodId: number, food: Record<string, unknown>) =>
+    apiFetch(`/admin/foods/${foodId}`, { method: "PUT", body: JSON.stringify(food) }),
+
+  deleteFood: (foodId: number) =>
+    apiFetch<{ message: string }>(`/admin/foods/${foodId}`, { method: "DELETE" }),
 
   getFeedback: (userId?: number) => {
     const query = userId ? `?userId=${userId}` : "";
