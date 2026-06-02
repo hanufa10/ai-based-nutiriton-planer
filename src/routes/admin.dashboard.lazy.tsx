@@ -14,27 +14,41 @@ function AdminDashboardPanel() {
   const [users, setUsers] = useState<any[]>([]);
   const [feedback, setFeedback] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  // const [mealPlans, setMealPlans] = useState<any[]>([]);
 
   // Form State for POST /admin/foods
   const [newFood, setNewFood] = useState({
     foodName: '', foodCalories: 0, foodProtein: 0, carbs: 0, fat: 0, category: 'Breakfast', foodType: 'local'
   });
 
-  const loadDashboardData = async () => {
-    setLoading(true);
-    try {
-      const reportData = await adminApi.getReport();
-      setReports(reportData);
-      
-      if (activeTab === 'foods') setFoods(await adminApi.getFoods());
-      if (activeTab === 'users') setUsers(await adminApi.getUsers());
-      if (activeTab === 'feedback') setFeedback(await adminApi.getFeedback());
-    } catch (err) {
-      console.error("Failed fetching data from NutPlanner API", err);
-    } finally {
-      setLoading(false);
+const loadDashboardData = async () => {
+  setLoading(true);
+
+  try {
+    const reportData = await adminApi.getReport();
+    setReports(reportData);
+    const feedbackData = await adminApi.getFeedback();
+setFeedback(feedbackData);
+
+    const foodsData = await adminApi.getFoods();
+    setFoods(foodsData);
+
+    const usersData = await adminApi.getUsers();
+    setUsers(usersData);
+
+
+    if (activeTab === "feedback") {
+      setFeedback(await adminApi.getFeedback());
     }
-  };
+  } catch (err) {
+    console.error("Failed fetching data from NutPlanner API", err);
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+
 useEffect(() => {
   const profile = localStorage.getItem("user_profile");
 
@@ -147,15 +161,24 @@ useEffect(() => {
 <span className="text-sm font-medium text-gray-500">
   Total users
 </span>
-                  <p className="text-2xl font-black text-gray-900 mt-1">{reports?.totalUsers ?? '...'}</p>
+                 <p className="text-2xl font-black text-gray-900 mt-1">
+  {users.length}
+</p>
                 </div>
                 <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
                   <span className="text-sm font-medium text-gray-500">Foods in database</span>
-                  <p className="text-2xl font-black text-gray-900 mt-1">{reports?.totalFoods ?? '...'}</p>
+                  <p className="text-2xl font-black text-gray-900 mt-1">
+  {foods.length}
+</p>
                 </div>
                 <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-                  <span className="text-sm font-medium text-gray-500">Active Plans Tracked</span>
-                  <p className="text-2xl font-black text-gray-900 mt-1">{reports?.activePlansToday ?? '...'}</p>
+  <span className="text-sm font-medium text-gray-500">
+  Total Feedback
+</span>
+
+<p className="text-2xl font-black text-gray-900 mt-1">
+  {feedback.length}
+</p>
                 </div>
               </div>
 

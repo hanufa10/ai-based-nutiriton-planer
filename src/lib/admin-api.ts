@@ -9,10 +9,15 @@ export const updateUser = (userId: number, data: any) =>
     body: JSON.stringify(data),
   });
 
-export const deleteUser = (userId: number) =>
-  apiFetch(`/admin/users/${userId}`, {
+export async function deleteUser(userId: number) {
+  const response = await fetch(`/admin/users/${userId}`, {
     method: "DELETE",
   });
+
+  if (!response.ok) {
+    throw new Error("Failed to delete user");
+  }
+}
 
 // REPORTS
 export const getReports = () => apiFetch("/admin/reports");

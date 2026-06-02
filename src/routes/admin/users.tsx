@@ -19,11 +19,15 @@ useEffect(() => {
   getUsers().then((data) => setUsers(data as User[]));
 }, []);
 
-  const handleDelete = async (id: number) => {
+const handleDelete = async (id: number) => {
+  try {
     await deleteUser(id);
-    setUsers((prev) => prev.filter((u) => u.id !== id));
-  };
 
+    setUsers((prev) => prev.filter((u) => u.id !== id));
+  } catch (err) {
+    console.error(err);
+  }
+};
   return (
     <div>
       <h1>Users</h1>
