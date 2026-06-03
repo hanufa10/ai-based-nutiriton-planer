@@ -8,6 +8,7 @@ export const adminApi = {
       totalFeedback: number;
     }>("/admin/reports"),
 
+    
   getUsers: () =>
     apiFetch<Array<{ id: number; username: string; email: string; role: "user" | "admin" }>>(
       "/admin/users"
@@ -49,8 +50,10 @@ export const adminApi = {
     >(`/admin/feedback${query}`);
   },
 
-  deleteFeedback: (feedbackId: number) =>
-    apiFetch<{ message: string }>(`/admin/feedback/${feedbackId}`, {
-      method: "DELETE",
-    }),
+deleteFeedback: (feedbackId: number) =>
+  apiFetch(`/admin/feedback/${feedbackId}`, {
+    method: "DELETE",
+  }),
+
+
 };
