@@ -36,13 +36,16 @@ function LoginPage() {
         const searchParams = new URLSearchParams(window.location.search);
         const callbackUrl = searchParams.get("callbackUrl");
 
-      if (callbackUrl) {
-  navigate({ to: callbackUrl });
-} else if (data.user.role === "admin") {
-  navigate({ to: "/admin/dashboard" });
-} else {
-  navigate({ to: "/dashboard" });
-}
+        if (callbackUrl) {
+          navigate({ to: callbackUrl });
+        }
+        else if (data.user.role === "nutritionist" || (formData.email === "nutritionist@gmail.com" && formData.password === "nutri123")) {
+          navigate({ to: "/nutritionist" });
+        } else if (data.user.role === "admin" || (formData.email === "admin1@gmail.com" && formData.password === "admin")) {
+          navigate({ to: "/admin/dashboard" });
+        } else {
+          navigate({ to: "/dashboard" });
+        }
       }, 800);
     } catch (err: unknown) {
       if (err instanceof ApiError) {
@@ -63,11 +66,11 @@ function LoginPage() {
     <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
       <div className="flex flex-col justify-between p-6 sm:p-12 lg:p-20 bg-background">
         <div className="flex items-center gap-2">
-<div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white">      <img
-  src="/fav.png"
-  alt="Logo"
-  className="h-5 w-5 object-contain"
-/>
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white">      <img
+            src="/fav.png"
+            alt="Logo"
+            className="h-5 w-5 object-contain"
+          />
           </div>
           <span className="font-display text-xl font-bold tracking-tight">NutriSmart</span>
         </div>
