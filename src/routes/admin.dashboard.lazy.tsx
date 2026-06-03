@@ -9,7 +9,7 @@ export const Route = createLazyFileRoute('/admin/dashboard')({
 });
 
 function AdminDashboardPanel() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'foods' | 'users' | 'feedback'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'foods' | 'users' | 'feedback' | 'nutritionists'>('overview');
   const [reports, setReports] = useState<any>(null);
   const [foods, setFoods] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -18,12 +18,34 @@ function AdminDashboardPanel() {
   const [deleteTarget, setDeleteTarget] = useState<any>(null); // Holds the user to be deleted
   const [message, setMessage] = useState<string | null>(null); // For "User deleted successfully"
   const [editTarget, setEditTarget] = useState<any>(null);
-
+  const [nutritionists, setNutritionists] = useState<any[]>([]);
+  const [showAddNutritionist, setShowAddNutritionist] = useState(false);
+  const [newNutritionist, setNewNutritionist] = useState({ name: '', email: '', password: '', role: 'nutritionist' });
   // Form State for POST /admin/foods
   const [newFood, setNewFood] = useState({
     foodName: '', foodCalories: 0, foodProtein: 0, carbs: 0, fat: 0, category: 'Breakfast', foodType: 'grain'
   });
-
+  const handleCreateNutritionist = async (e: React.FormEvent) => {
+  e.preventDefault();
+  try {
+    // We spread newNutritionist to include the role: 'nutritionist' 
+    // defined in your initial state
+    await adminApi.createNutritionist(newNutritionist);
+    
+    // Refresh the list
+    setNutritionists(await adminApi.getNutritionists()); 
+    setShowAddNutritionist(false);
+    
+    // Reset form
+    setNewNutritionist({ name: '', email: '', password: 'DefaultPassword123!', role: 'nutritionist' });
+    
+    setMessage("Nutritionist added successfully.");
+    setTimeout(() => setMessage(null), 3000);
+  } catch (err) {
+    console.error("Failed to add nutritionist", err);
+    alert("Failed to create nutritionist. Please check the console.");
+  }
+};
   const loadDashboardData = async () => {
     setLoading(true);
     try {
@@ -31,11 +53,12 @@ function AdminDashboardPanel() {
       setReports(reportData);
 
       if (activeTab === 'foods') setFoods(await adminApi.getFoods());
-      if (activeTab === 'users') {
-        const userData = await adminApi.getUsers();
-        setUsers(userData);
-      }
+      if (activeTab === 'users') setUsers(await adminApi.getUsers());
       if (activeTab === 'feedback') setFeedback(await adminApi.getFeedback());
+      // Add this line:
+      if (activeTab === 'nutritionists') {
+        setNutritionists(await adminApi.getNutritionists());
+      }
     } catch (err) {
       console.error("Failed fetching data", err);
     } finally {
@@ -109,11 +132,16 @@ function AdminDashboardPanel() {
                   if (deleteTarget.type === 'user') {
                     await adminApi.deleteUser(deleteTarget.userId);
                     setUsers(await adminApi.getUsers());
-                    setMessage(`User ${deleteTarget.username} deleted successfully.`);
+                    setMessage(`User ${deleteTarget.username} deleted.`);
                   } else if (deleteTarget.type === 'feedback') {
                     await adminApi.deleteFeedback(deleteTarget.id);
                     setFeedback(await adminApi.getFeedback());
-                    setMessage("Feedback entry successfully removed.");
+                    setMessage("Feedback removed.");
+                  } else if (deleteTarget.type === 'nutritionist') {
+                    // ADD THIS BLOCK
+                    await adminApi.deleteNutritionist(deleteTarget.userId);
+                    setNutritionists(await adminApi.getNutritionists());
+                    setMessage(`Nutritionist ${deleteTarget.name} deleted successfully.`);
                   }
                   setDeleteTarget(null);
                   setTimeout(() => setMessage(null), 3000);
@@ -126,19 +154,87 @@ function AdminDashboardPanel() {
           </div>
         </div>
       )}
+      {showAddNutritionist && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-xl shadow-xl max-w-sm w-full">
+            <h3 className="font-bold text-lg text-gray-900">Add New Nutritionist</h3>
+            <form onSubmit={handleCreateNutritionist} className="space-y-4 mt-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Username</label>
+                <input
+                  required
+                  value={newNutritionist.name}
+                  onChange={(e) => setNewNutritionist({ ...newNutritionist, name: e.target.value })}
+                  className="w-full border p-2 rounded-lg text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Email</label>
+                <input
+                  type="email"
+                  required
+                  value={newNutritionist.email}
+                  onChange={(e) => setNewNutritionist({ ...newNutritionist, email: e.target.value })}
+                  className="w-full border p-2 rounded-lg text-sm"
+                />
+              </div>
+              {/* Inside the Add Nutritionist Modal */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Temporary Password</label>
+                <input
+                  type="password"
+                  required
+                  value={newNutritionist.password}
+                  onChange={(e) => setNewNutritionist({ ...newNutritionist, password: e.target.value })}
+                  className="w-full border p-2 rounded-lg text-sm"
+                />
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowAddNutritionist(false)}
+                  className="flex-1 py-2 border rounded-lg text-sm font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium"
+                >
+                  Create
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       {editTarget && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white p-6 rounded-xl shadow-xl max-w-sm w-full">
             <h3 className="font-bold text-lg text-gray-900">Edit User Details</h3>
             <form onSubmit={async (e) => {
-              e.preventDefault();
-              // Ensure your API can handle the updated object
-              await adminApi.updateUser(editTarget.userId, editTarget);
-              setUsers(await adminApi.getUsers());
-              setEditTarget(null);
-              setMessage(`User ${editTarget.username} updated successfully.`);
-              setTimeout(() => setMessage(null), 3000);
-            }} className="space-y-4 mt-4">
+                e.preventDefault();
+                
+                try {
+                  if (editTarget.role === 'nutritionist') {
+                    // Update specifically for Nutritionists
+                    await adminApi.updateNutritionist(editTarget.userId, editTarget);
+                    setNutritionists(await adminApi.getNutritionists());
+                    setMessage(`Nutritionist ${editTarget.username} updated successfully.`);
+                  } else {
+                    // Update specifically for Users
+                    await adminApi.updateUser(editTarget.userId, editTarget);
+                    setUsers(await adminApi.getUsers());
+                    setMessage(`User ${editTarget.username} updated successfully.`);
+                  }
+
+                  setEditTarget(null);
+                  setTimeout(() => setMessage(null), 3000);
+                } catch (error) {
+                  console.error("Failed to update:", error);
+                  alert("An error occurred while saving changes.");
+                }
+              }} className="space-y-4 mt-4">
 
               {/* Username Field */}
               <div>
@@ -171,6 +267,7 @@ function AdminDashboardPanel() {
                 >
                   <option value="user">User</option>
                   <option value="admin">Admin</option>
+                  <option value="nutritionist">Nutritionist</option>
                 </select>
               </div>
 
@@ -208,6 +305,12 @@ function AdminDashboardPanel() {
             </button>
             <button onClick={() => setActiveTab('feedback')} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium ${activeTab === 'feedback' ? 'bg-emerald-600/20 text-emerald-400 font-bold' : 'text-gray-400 hover:bg-emerald-950'}`}>
               <MessageSquare size={16} /> User Feedback
+            </button>
+            <button
+              onClick={() => setActiveTab('nutritionists')}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium ${activeTab === 'nutritionists' ? 'bg-emerald-600/20 text-emerald-400 font-bold' : 'text-gray-400 hover:bg-emerald-950'}`}
+            >
+              <Users size={16} /> Nutritionist Directory
             </button>
           </nav>
         </div>
@@ -302,42 +405,7 @@ function AdminDashboardPanel() {
           {/* TAB 2: FOOD MANAGEMENT (POST/DELETE /admin/foods) */}
           {activeTab === 'foods' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Insert Form */}
-              <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm h-fit space-y-4">
-                <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                  <Plus size={16} className="text-emerald-600" /> Populate Food Repository
-                </h3>
-                <form onSubmit={handleCreateFood} className="space-y-3 text-xs">
-                  <div>
-                    <label className="block text-gray-500 mb-1">Food Name (e.g., Injera, Shiro, etc.)</label>
-                    <input type="text" required value={newFood.foodName} onChange={e => setNewFood({ ...newFood, foodName: e.target.value })} className="w-full border p-2 rounded-md outline-emerald-600" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-gray-500 mb-1">Calories (kcal)</label>
-                      <input type="number" value={newFood.foodCalories} onChange={e => setNewFood({ ...newFood, foodCalories: parseInt(e.target.value) || 0 })} className="w-full border p-2 rounded-md" />
-                    </div>
-                    <div>
-                      <label className="block text-gray-500 mb-1">Protein (g)</label>
-                      <input type="number" value={newFood.foodProtein} onChange={e => setNewFood({ ...newFood, foodProtein: parseInt(e.target.value) || 0 })} className="w-full border p-2 rounded-md" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-gray-500 mb-1">Carbs (g)</label>
-                      <input type="number" value={newFood.carbs} onChange={e => setNewFood({ ...newFood, carbs: parseInt(e.target.value) || 0 })} className="w-full border p-2 rounded-md" />
-                    </div>
-                    <div>
-                      <label className="block text-gray-500 mb-1">Fat (g)</label>
-                      <input type="number" value={newFood.fat} onChange={e => setNewFood({ ...newFood, fat: parseInt(e.target.value) || 0 })} className="w-full border p-2 rounded-md" />
-                    </div>
-                  </div>
-                  <button type="submit" className="w-full bg-emerald-700 text-white font-semibold p-2.5 rounded-md mt-2 hover:bg-emerald-800 transition-colors">
-                    Commit to Database
-                  </button>
-                </form>
-              </div>
-
+              
               {/* Food Dataset Output Render */}
               <div className="lg:col-span-2 bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
                 <div className="p-4 border-b border-gray-100 bg-gray-50/50">
@@ -410,7 +478,55 @@ function AdminDashboardPanel() {
               </table>
             </div>
           )}
+          {activeTab === 'nutritionists' && (
+            <div className="space-y-4">
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setShowAddNutritionist(true)}
+                  className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700"
+                >
+                  <Plus size={16} /> Add Nutritionist
+                </button>
+              </div>
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
 
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100 text-gray-400 font-bold uppercase tracking-wider">
+                      <th className="p-4">Nutritionist ID</th>
+                      <th className="p-4">Credentials</th>
+                      <th className="p-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {nutritionists.map((nutri: any) => (
+                      <tr key={nutri.userId} className="hover:bg-gray-50/40">
+                        <td className="p-4 font-mono text-gray-400">#{nutri.userId}</td>
+                        <td className="p-4">
+                          <div className="font-semibold text-gray-900">{nutri.name}</div>
+                          <div className="text-gray-400 mt-0.5">{nutri.email}</div>
+                        </td>
+                        <td className="p-4 text-right flex justify-end gap-2">
+                          <button
+                            onClick={() => setEditTarget(nutri)}
+                            className="text-emerald-600 font-medium hover:underline"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => setDeleteTarget({ type: 'nutritionist', userId: nutri.userId, name: nutri.name })}
+                            className="text-red-600 font-medium hover:underline"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
           {/* TAB 4: USER FEEDBACK STREAM (GET /admin/feedback) */}
           {/* {activeTab === 'feedback' && (
             <div className="space-y-3">
@@ -470,8 +586,6 @@ function AdminDashboardPanel() {
               )}
             </div>
           )}
-
-
         </main>
       </div>
     </div>

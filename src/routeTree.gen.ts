@@ -14,6 +14,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as PlannerRouteImport } from './routes/planner'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as NutritionistRouteImport } from './routes/nutritionist'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LibraryRouteImport } from './routes/library'
 import { Route as FeedbackRouteImport } from './routes/feedback'
@@ -50,6 +51,11 @@ const PlannerRoute = PlannerRouteImport.update({
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NutritionistRoute = NutritionistRouteImport.update({
+  id: '/nutritionist',
+  path: '/nutritionist',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -122,6 +128,7 @@ export interface FileRoutesByFullPath {
   '/feedback': typeof FeedbackRoute
   '/library': typeof LibraryRoute
   '/login': typeof LoginRoute
+  '/nutritionist': typeof NutritionistRoute
   '/onboarding': typeof OnboardingRoute
   '/planner': typeof PlannerRoute
   '/progress': typeof ProgressRoute
@@ -141,6 +148,7 @@ export interface FileRoutesByTo {
   '/feedback': typeof FeedbackRoute
   '/library': typeof LibraryRoute
   '/login': typeof LoginRoute
+  '/nutritionist': typeof NutritionistRoute
   '/onboarding': typeof OnboardingRoute
   '/planner': typeof PlannerRoute
   '/progress': typeof ProgressRoute
@@ -161,6 +169,7 @@ export interface FileRoutesById {
   '/feedback': typeof FeedbackRoute
   '/library': typeof LibraryRoute
   '/login': typeof LoginRoute
+  '/nutritionist': typeof NutritionistRoute
   '/onboarding': typeof OnboardingRoute
   '/planner': typeof PlannerRoute
   '/progress': typeof ProgressRoute
@@ -182,6 +191,7 @@ export interface FileRouteTypes {
     | '/feedback'
     | '/library'
     | '/login'
+    | '/nutritionist'
     | '/onboarding'
     | '/planner'
     | '/progress'
@@ -201,6 +211,7 @@ export interface FileRouteTypes {
     | '/feedback'
     | '/library'
     | '/login'
+    | '/nutritionist'
     | '/onboarding'
     | '/planner'
     | '/progress'
@@ -220,6 +231,7 @@ export interface FileRouteTypes {
     | '/feedback'
     | '/library'
     | '/login'
+    | '/nutritionist'
     | '/onboarding'
     | '/planner'
     | '/progress'
@@ -240,6 +252,7 @@ export interface RootRouteChildren {
   FeedbackRoute: typeof FeedbackRoute
   LibraryRoute: typeof LibraryRoute
   LoginRoute: typeof LoginRoute
+  NutritionistRoute: typeof NutritionistRoute
   OnboardingRoute: typeof OnboardingRoute
   PlannerRoute: typeof PlannerRoute
   ProgressRoute: typeof ProgressRoute
@@ -288,6 +301,13 @@ declare module '@tanstack/react-router' {
       path: '/onboarding'
       fullPath: '/onboarding'
       preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/nutritionist': {
+      id: '/nutritionist'
+      path: '/nutritionist'
+      fullPath: '/nutritionist'
+      preLoaderRoute: typeof NutritionistRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -384,6 +404,7 @@ const rootRouteChildren: RootRouteChildren = {
   FeedbackRoute: FeedbackRoute,
   LibraryRoute: LibraryRoute,
   LoginRoute: LoginRoute,
+  NutritionistRoute: NutritionistRoute,
   OnboardingRoute: OnboardingRoute,
   PlannerRoute: PlannerRoute,
   ProgressRoute: ProgressRoute,
