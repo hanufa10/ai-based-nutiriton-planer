@@ -1,5 +1,7 @@
 import { apiFetch } from "./api";
 
+
+
 // USERS
 export const getUsers = () => apiFetch("/admin/users");
 
@@ -19,6 +21,7 @@ export async function deleteUser(userId: number) {
   }
 }
 
+
 // REPORTS
 export const getReports = () => apiFetch("/admin/reports");
 
@@ -29,6 +32,8 @@ export const deleteFeedback = (id: number) =>
   apiFetch(`/admin/feedback/${id}`, {
     method: "DELETE",
   });
+
+
 
 // FOODS
 export const getFoods = () => apiFetch("/admin/foods");
