@@ -362,7 +362,7 @@ function AdminDashboardPanel() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
                   <span className="text-sm font-medium text-gray-500">
-                    Total users
+                                        Total users
                   </span>
                   <p className="text-2xl font-black text-gray-900 mt-1">{reports?.totalUsers ?? '...'}</p>
                 </div>
